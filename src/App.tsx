@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Play,
   LogOut,
-  User
+  User,
+  LayoutDashboard
 } from 'lucide-react';
 import { stripeProducts } from './stripe-config';
 import { SubscriptionStatus } from './components/SubscriptionStatus';
@@ -37,9 +38,17 @@ interface User {
   };
 }
 
+interface SubscriptionData {
+  subscription_status: string;
+  price_id: string | null;
+  current_period_end: number | null;
+  cancel_at_period_end: boolean;
+}
+
 function App() {
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -54,8 +63,10 @@ function App() {
           email: session.user.email || '',
           user_metadata: session.user.user_metadata
         });
+        checkSubscription(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
+        setSubscription(null);
       }
     });
 
@@ -71,6 +82,7 @@ function App() {
           email: session.user.email || '',
           user_metadata: session.user.user_metadata
         });
+        await checkSubscription(session.user.id);
       }
     } catch (error) {
       console.error('Error checking user:', error);
@@ -79,9 +91,27 @@ function App() {
     }
   };
 
+  const checkSubscription = async (userId: string) => {
+    try {
+      const { data: subscriptionData, error } = await supabase
+        .from('stripe_user_subscriptions')
+        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching subscription:', error);
+      } else {
+        setSubscription(subscriptionData);
+      }
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setSubscription(null);
   };
 
   const scrollToPricing = () => {
@@ -153,6 +183,8 @@ function App() {
     return user.email.split('@')[0];
   };
 
+  const hasActiveSubscription = subscription && subscription.subscription_status === 'active';
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -184,6 +216,15 @@ function App() {
                     <SubscriptionStatus />
                   </div>
                   <div className="flex items-center space-x-4">
+                    {hasActiveSubscription && (
+                      <a
+                        href="/dashboard"
+                        className="flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
+                      >
+                        <LayoutDashboard className="w-4 h-4 mr-1" />
+                        Dashboard
+                      </a>
+                    )}
                     <div className="flex items-center text-white">
                       <User className="w-5 h-5 mr-2 text-white/80" />
                       <span className="text-sm font-medium">
@@ -240,13 +281,24 @@ function App() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                <button 
-                  onClick={scrollToPricing}
-                  className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
-                >
-                  Get Started Now
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </button>
+                {hasActiveSubscription ? (
+                  <a
+                    href="/dashboard"
+                    className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
+                  >
+                    <LayoutDashboard className="w-5 h-5 mr-2" />
+                    Go to Dashboard
+                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </a>
+                ) : (
+                  <button 
+                    onClick={scrollToPricing}
+                    className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
+                  >
+                    Get Started Now
+                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
                 
                 <button className="group border-2 border-gray-600 hover:border-gray-500 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5">
                   <Play className="w-5 h-5 mr-2" />

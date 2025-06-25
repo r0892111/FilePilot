@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import SuccessPage from './SuccessPage.tsx';
 import { AuthPage } from './components/AuthPage.tsx';
+import { Dashboard } from './components/Dashboard.tsx';
 import './index.css';
 
 // Simple client-side routing
@@ -22,6 +23,9 @@ const AppComponent = () => {
   }
   if (path === '/success') {
     return <SuccessPage />;
+  }
+  if (path === '/dashboard') {
+    return <Dashboard />;
   }
   return <App />;
 };

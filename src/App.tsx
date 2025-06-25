@@ -29,6 +29,12 @@ const supabase = createClient(
 interface User {
   id: string;
   email: string;
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+  };
 }
 
 function App() {
@@ -45,7 +51,8 @@ function App() {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser({
           id: session.user.id,
-          email: session.user.email || ''
+          email: session.user.email || '',
+          user_metadata: session.user.user_metadata
         });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -61,7 +68,8 @@ function App() {
       if (session?.user) {
         setUser({
           id: session.user.id,
-          email: session.user.email || ''
+          email: session.user.email || '',
+          user_metadata: session.user.user_metadata
         });
       }
     } catch (error) {
@@ -129,6 +137,22 @@ function App() {
     }
   };
 
+  // Helper function to get user's display name
+  const getUserDisplayName = (user: User) => {
+    if (user.user_metadata?.full_name) {
+      return user.user_metadata.full_name;
+    }
+    if (user.user_metadata?.name) {
+      return user.user_metadata.name;
+    }
+    if (user.user_metadata?.first_name) {
+      const lastName = user.user_metadata.last_name ? ` ${user.user_metadata.last_name}` : '';
+      return `${user.user_metadata.first_name}${lastName}`;
+    }
+    // Fallback to email username (part before @)
+    return user.email.split('@')[0];
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -159,17 +183,19 @@ function App() {
                   <div className="hidden sm:block">
                     <SubscriptionStatus />
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center text-white/80">
-                      <User className="w-4 h-4 mr-2" />
-                      <span className="text-sm">{user.email}</span>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center text-white">
+                      <User className="w-5 h-5 mr-2 text-white/80" />
+                      <span className="text-sm font-medium">
+                        Welcome, {getUserDisplayName(user)}
+                      </span>
                     </div>
                     <button
                       onClick={handleSignOut}
-                      className="flex items-center text-white/80 hover:text-white transition-colors"
+                      className="flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
                     >
                       <LogOut className="w-4 h-4 mr-1" />
-                      <span className="text-sm">Sign out</span>
+                      Sign out
                     </button>
                   </div>
                 </>

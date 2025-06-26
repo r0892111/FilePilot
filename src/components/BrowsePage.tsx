@@ -33,6 +33,10 @@ import {
   X,
   Plus,
   Folder,
+  Video,
+  Music,
+  Archive,
+  Code,
 } from "lucide-react";
 import { fetchGoogleDriveFiles } from "../api/googleDrive/driveApi";
 
@@ -41,24 +45,24 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// Types for file system items
+// Types for Google Drive API format
 interface DriveItem {
   id: string;
   name: string;
-  type: "folder" | "file";
-  size?: number;
-  mimeType?: string;
-  modifiedTime: string;
-  createdTime: string;
-  path: string;
-  parentId?: string;
-  starred: boolean;
-  shared: boolean;
-  category?: string;
-  tags?: string[];
-  thumbnail?: string;
+  mimeType: string;
+  parents?: string[];
+  size?: string;
+  modifiedTime?: string;
+  createdTime?: string;
+  starred?: boolean;
+  shared?: boolean;
   webViewLink?: string;
   downloadLink?: string;
+  thumbnailLink?: string;
+  // Computed properties
+  type?: 'folder' | 'file';
+  children?: DriveItem[];
+  path?: string;
 }
 
 interface CloudProvider {

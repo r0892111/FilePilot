@@ -47,22 +47,10 @@ const supabase = createClient(
 
 // Types for Google Drive API format
 interface DriveItem {
+  parents?: string[];
   id: string;
   name: string;
   mimeType: string;
-  parents?: string[];
-  size?: string;
-  modifiedTime?: string;
-  createdTime?: string;
-  starred?: boolean;
-  shared?: boolean;
-  webViewLink?: string;
-  downloadLink?: string;
-  thumbnailLink?: string;
-  // Computed properties
-  type?: 'folder' | 'file';
-  children?: DriveItem[];
-  path?: string;
 }
 
 interface CloudProvider {
@@ -158,54 +146,18 @@ export function BrowsePage() {
     setIsLoading(true);
 
     try {
+      let items;
       const accessToken = (await supabase.auth.getSession()).data.session
         ?.provider_token;
       if (selectedProvider.id === "google-drive" && accessToken) {
-        fetchGoogleDriveFiles(accessToken).then((files) => {
+        items = await fetchGoogleDriveFiles(accessToken).then((files) => {
           // Map Google Drive files to your DriveItem type if needed
           // setItems(mappedFiles);
           console.log(files);
         });
       }
 
-      const mockItems: DriveItem[] = [
-        {
-          id: "1",
-          name: "Documents",
-          type: "folder",
-          modifiedTime: "2024-01-15T10:30:00Z",
-          createdTime: "2024-01-01T09:00:00Z",
-          path: "/Documents",
-          starred: false,
-          shared: false,
-        },
-        {
-          id: "2",
-          name: "Financial Report Q4.pdf",
-          type: "file",
-          size: 2457600,
-          mimeType: "application/pdf",
-          modifiedTime: "2024-01-14T15:45:00Z",
-          createdTime: "2024-01-14T15:45:00Z",
-          path: "/Financial Report Q4.pdf",
-          starred: true,
-          shared: false,
-          category: "Finance",
-          tags: ["report", "quarterly"],
-        },
-        {
-          id: "3",
-          name: "Project Images",
-          type: "folder",
-          modifiedTime: "2024-01-13T12:20:00Z",
-          createdTime: "2024-01-10T08:15:00Z",
-          path: "/Project Images",
-          starred: false,
-          shared: true,
-        },
-      ];
-
-      return mockItems;
+      return items;
     } catch (error) {
       console.error("Error fetching drive items:", error);
       return [];

@@ -81,12 +81,13 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       console.log('Redirect URL:', redirectTo);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: redirectTo,
+          scopes: "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly",
           queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
+            access_type: "offline",
+            prompt: "consent",
           },
         },
       });

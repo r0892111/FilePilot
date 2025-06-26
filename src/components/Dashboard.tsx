@@ -185,7 +185,8 @@ export function Dashboard() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/';
+    setUser(null);
+    setSubscription(null);
   };
 
   const getUserDisplayName = (user: User) => {
@@ -410,8 +411,11 @@ export function Dashboard() {
             <p className="text-green-100 mb-4">
               Access your organized documents directly in Google Drive with smart folder structure.
             </p>
-            <button className="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition-colors">
-              Open Drive
+            <button 
+              onClick={() => window.location.href = '/browse'}
+              className="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition-colors"
+            >
+              Browse Files
             </button>
           </div>
 
@@ -423,7 +427,10 @@ export function Dashboard() {
             <p className="text-purple-100 mb-4">
               Find any document instantly using AI-powered search with natural language queries.
             </p>
-            <button className="bg-white text-purple-600 px-4 py-2 rounded-lg font-medium hover:bg-purple-50 transition-colors">
+            <button 
+              onClick={() => window.location.href = '/browse'}
+              className="bg-white text-purple-600 px-4 py-2 rounded-lg font-medium hover:bg-purple-50 transition-colors"
+            >
               Search Now
             </button>
           </div>

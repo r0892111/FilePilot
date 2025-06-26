@@ -5,6 +5,7 @@ import SuccessPage from './SuccessPage.tsx';
 import { AuthPage } from './components/AuthPage.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { UploadPage } from './components/UploadPage.tsx';
+import { BrowsePage } from './components/BrowsePage.tsx';
 import './index.css';
 
 // Simple client-side routing
@@ -30,6 +31,9 @@ const AppComponent = () => {
   }
   if (path === '/upload') {
     return <UploadPage />;
+  }
+  if (path === '/browse') {
+    return <BrowsePage />;
   }
   return <App />;
 };

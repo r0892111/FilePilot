@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { 
-  Search, 
-  Filter, 
-  Grid3X3, 
-  List, 
-  FolderOpen, 
-  FileText, 
-  Image, 
-  File, 
+import React, { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+import {
+  Search,
+  Filter,
+  Grid3X3,
+  List,
+  FolderOpen,
+  FileText,
+  Image,
+  File,
   MoreHorizontal,
   ArrowLeft,
   ChevronRight,
@@ -32,8 +32,9 @@ import {
   ChevronDown,
   X,
   Plus,
-  Folder
-} from 'lucide-react';
+  Folder,
+} from "lucide-react";
+import { fetchGoogleDriveFiles } from "../api/googleDrive/driveApi";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -44,7 +45,7 @@ const supabase = createClient(
 interface DriveItem {
   id: string;
   name: string;
-  type: 'folder' | 'file';
+  type: "folder" | "file";
   size?: number;
   mimeType?: string;
   modifiedTime: string;
@@ -87,225 +88,278 @@ interface BreadcrumbItem {
 
 const cloudProviders: CloudProvider[] = [
   {
-    id: 'google-drive',
-    name: 'Google Drive',
+    id: "google-drive",
+    name: "Google Drive",
     icon: Cloud,
-    color: '#4285F4',
+    color: "#4285F4",
     connected: true,
-    totalStorage: '15 GB',
-    usedStorage: '8.2 GB'
+    totalStorage: "15 GB",
+    usedStorage: "8.2 GB",
   },
   {
-    id: 'onedrive',
-    name: 'OneDrive',
+    id: "onedrive",
+    name: "OneDrive",
     icon: HardDrive,
-    color: '#0078D4',
+    color: "#0078D4",
     connected: false,
-    totalStorage: '5 GB',
-    usedStorage: '0 GB'
+    totalStorage: "5 GB",
+    usedStorage: "0 GB",
   },
   {
-    id: 'icloud',
-    name: 'iCloud Drive',
+    id: "icloud",
+    name: "iCloud Drive",
     icon: Smartphone,
-    color: '#007AFF',
+    color: "#007AFF",
     connected: false,
-    totalStorage: '5 GB',
-    usedStorage: '0 GB'
-  }
+    totalStorage: "5 GB",
+    usedStorage: "0 GB",
+  },
 ];
 
 export function BrowsePage() {
-  const [selectedProvider, setSelectedProvider] = useState<CloudProvider>(cloudProviders[0]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedProvider, setSelectedProvider] = useState<CloudProvider>(
+    cloudProviders[0]
+  );
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<'name' | 'modified' | 'size' | 'type'>('name');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState<"name" | "modified" | "size" | "type">(
+    "name"
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [currentPath, setCurrentPath] = useState('/');
+  const [currentPath, setCurrentPath] = useState("/");
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([
-    { id: 'root', name: 'My Drive', path: '/' }
+    { id: "root", name: "My Drive", path: "/" },
   ]);
   const [items, setItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    fileType: 'all',
-    dateRange: 'all',
-    category: 'all',
-    size: 'all',
+    fileType: "all",
+    dateRange: "all",
+    category: "all",
+    size: "all",
     starred: false,
-    shared: false
+    shared: false,
   });
 
   // Data fetching stubs - replace with actual API calls
-  const fetchDriveItems = async (path: string, providerId: string): Promise<DriveItem[]> => {
+  const fetchDriveItems = async (
+    path: string,
+    providerId: string
+  ): Promise<DriveItem[]> => {
     // TODO: Implement actual API call to fetch drive items
     // This is a stub that returns mock data
     setIsLoading(true);
-    
+
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock data - replace with actual API response
+      const accessToken = (await supabase.auth.getSession()).data.session
+        ?.provider_token;
+      if (selectedProvider.id === "google-drive" && accessToken) {
+        fetchGoogleDriveFiles(accessToken).then((files) => {
+          // Map Google Drive files to your DriveItem type if needed
+          // setItems(mappedFiles);
+          console.log(files);
+        });
+      }
+
       const mockItems: DriveItem[] = [
         {
-          id: '1',
-          name: 'Documents',
-          type: 'folder',
-          modifiedTime: '2024-01-15T10:30:00Z',
-          createdTime: '2024-01-01T09:00:00Z',
-          path: '/Documents',
+          id: "1",
+          name: "Documents",
+          type: "folder",
+          modifiedTime: "2024-01-15T10:30:00Z",
+          createdTime: "2024-01-01T09:00:00Z",
+          path: "/Documents",
           starred: false,
-          shared: false
+          shared: false,
         },
         {
-          id: '2',
-          name: 'Financial Report Q4.pdf',
-          type: 'file',
+          id: "2",
+          name: "Financial Report Q4.pdf",
+          type: "file",
           size: 2457600,
-          mimeType: 'application/pdf',
-          modifiedTime: '2024-01-14T15:45:00Z',
-          createdTime: '2024-01-14T15:45:00Z',
-          path: '/Financial Report Q4.pdf',
+          mimeType: "application/pdf",
+          modifiedTime: "2024-01-14T15:45:00Z",
+          createdTime: "2024-01-14T15:45:00Z",
+          path: "/Financial Report Q4.pdf",
           starred: true,
           shared: false,
-          category: 'Finance',
-          tags: ['report', 'quarterly']
+          category: "Finance",
+          tags: ["report", "quarterly"],
         },
         {
-          id: '3',
-          name: 'Project Images',
-          type: 'folder',
-          modifiedTime: '2024-01-13T12:20:00Z',
-          createdTime: '2024-01-10T08:15:00Z',
-          path: '/Project Images',
+          id: "3",
+          name: "Project Images",
+          type: "folder",
+          modifiedTime: "2024-01-13T12:20:00Z",
+          createdTime: "2024-01-10T08:15:00Z",
+          path: "/Project Images",
           starred: false,
-          shared: true
-        }
+          shared: true,
+        },
       ];
-      
+
       return mockItems;
     } catch (error) {
-      console.error('Error fetching drive items:', error);
+      console.error("Error fetching drive items:", error);
       return [];
     } finally {
       setIsLoading(false);
     }
   };
 
-  const searchDriveItems = async (query: string, filters: SearchFilters, providerId: string): Promise<DriveItem[]> => {
+  const searchDriveItems = async (
+    query: string,
+    filters: SearchFilters,
+    providerId: string
+  ): Promise<DriveItem[]> => {
     // TODO: Implement actual search API call
     // This is a stub that returns filtered mock data
     setIsSearching(true);
-    
+
     try {
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       // Mock search results - replace with actual API response
       const mockResults: DriveItem[] = [
         {
-          id: 'search1',
-          name: 'Contract Agreement.docx',
-          type: 'file',
+          id: "search1",
+          name: "Contract Agreement.docx",
+          type: "file",
           size: 1024000,
-          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          modifiedTime: '2024-01-12T14:30:00Z',
-          createdTime: '2024-01-12T14:30:00Z',
-          path: '/Legal/Contract Agreement.docx',
+          mimeType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          modifiedTime: "2024-01-12T14:30:00Z",
+          createdTime: "2024-01-12T14:30:00Z",
+          path: "/Legal/Contract Agreement.docx",
           starred: false,
           shared: true,
-          category: 'Legal',
-          tags: ['contract', 'agreement']
-        }
+          category: "Legal",
+          tags: ["contract", "agreement"],
+        },
       ];
-      
+
       return mockResults;
     } catch (error) {
-      console.error('Error searching drive items:', error);
+      console.error("Error searching drive items:", error);
       return [];
     } finally {
       setIsSearching(false);
     }
   };
 
-  const createFolder = async (name: string, parentPath: string, providerId: string): Promise<boolean> => {
+  const createFolder = async (
+    name: string,
+    parentPath: string,
+    providerId: string
+  ): Promise<boolean> => {
     // TODO: Implement actual folder creation API call
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Creating folder "${name}" in "${parentPath}" on ${providerId}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log(
+        `Creating folder "${name}" in "${parentPath}" on ${providerId}`
+      );
       return true;
     } catch (error) {
-      console.error('Error creating folder:', error);
+      console.error("Error creating folder:", error);
       return false;
     }
   };
 
-  const deleteItems = async (itemIds: string[], providerId: string): Promise<boolean> => {
+  const deleteItems = async (
+    itemIds: string[],
+    providerId: string
+  ): Promise<boolean> => {
     // TODO: Implement actual delete API call
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Deleting items ${itemIds.join(', ')} from ${providerId}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log(`Deleting items ${itemIds.join(", ")} from ${providerId}`);
       return true;
     } catch (error) {
-      console.error('Error deleting items:', error);
+      console.error("Error deleting items:", error);
       return false;
     }
   };
 
-  const moveItems = async (itemIds: string[], targetPath: string, providerId: string): Promise<boolean> => {
+  const moveItems = async (
+    itemIds: string[],
+    targetPath: string,
+    providerId: string
+  ): Promise<boolean> => {
     // TODO: Implement actual move API call
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Moving items ${itemIds.join(', ')} to "${targetPath}" on ${providerId}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log(
+        `Moving items ${itemIds.join(", ")} to "${targetPath}" on ${providerId}`
+      );
       return true;
     } catch (error) {
-      console.error('Error moving items:', error);
+      console.error("Error moving items:", error);
       return false;
     }
   };
 
-  const copyItems = async (itemIds: string[], targetPath: string, providerId: string): Promise<boolean> => {
+  const copyItems = async (
+    itemIds: string[],
+    targetPath: string,
+    providerId: string
+  ): Promise<boolean> => {
     // TODO: Implement actual copy API call
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Copying items ${itemIds.join(', ')} to "${targetPath}" on ${providerId}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log(
+        `Copying items ${itemIds.join(
+          ", "
+        )} to "${targetPath}" on ${providerId}`
+      );
       return true;
     } catch (error) {
-      console.error('Error copying items:', error);
+      console.error("Error copying items:", error);
       return false;
     }
   };
 
-  const toggleStarred = async (itemId: string, starred: boolean, providerId: string): Promise<boolean> => {
+  const toggleStarred = async (
+    itemId: string,
+    starred: boolean,
+    providerId: string
+  ): Promise<boolean> => {
     // TODO: Implement actual star toggle API call
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 300));
-      console.log(`${starred ? 'Starring' : 'Unstarring'} item ${itemId} on ${providerId}`);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      console.log(
+        `${starred ? "Starring" : "Unstarring"} item ${itemId} on ${providerId}`
+      );
       return true;
     } catch (error) {
-      console.error('Error toggling starred status:', error);
+      console.error("Error toggling starred status:", error);
       return false;
     }
   };
 
-  const shareItem = async (itemId: string, permissions: string, providerId: string): Promise<string | null> => {
+  const shareItem = async (
+    itemId: string,
+    permissions: string,
+    providerId: string
+  ): Promise<string | null> => {
     // TODO: Implement actual sharing API call
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Sharing item ${itemId} with ${permissions} on ${providerId}`);
-      return 'https://example.com/shared/item';
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      console.log(
+        `Sharing item ${itemId} with ${permissions} on ${providerId}`
+      );
+      return "https://example.com/shared/item";
     } catch (error) {
-      console.error('Error sharing item:', error);
+      console.error("Error sharing item:", error);
       return null;
     }
   };
@@ -318,7 +372,10 @@ export function BrowsePage() {
   }, [selectedProvider, currentPath]);
 
   const loadItems = async () => {
-    const fetchedItems = await fetchDriveItems(currentPath, selectedProvider.id);
+    const fetchedItems = await fetchDriveItems(
+      currentPath,
+      selectedProvider.id
+    );
     setItems(fetchedItems);
   };
 
@@ -327,61 +384,72 @@ export function BrowsePage() {
       loadItems();
       return;
     }
-    
-    const results = await searchDriveItems(searchQuery, searchFilters, selectedProvider.id);
+
+    const results = await searchDriveItems(
+      searchQuery,
+      searchFilters,
+      selectedProvider.id
+    );
     setItems(results);
   };
 
   const handleFolderClick = (folder: DriveItem) => {
     const newPath = folder.path;
     setCurrentPath(newPath);
-    
-    const newBreadcrumbs = [...breadcrumbs, {
-      id: folder.id,
-      name: folder.name,
-      path: newPath
-    }];
+
+    const newBreadcrumbs = [
+      ...breadcrumbs,
+      {
+        id: folder.id,
+        name: folder.name,
+        path: newPath,
+      },
+    ];
     setBreadcrumbs(newBreadcrumbs);
   };
 
   const handleBreadcrumbClick = (breadcrumb: BreadcrumbItem) => {
     setCurrentPath(breadcrumb.path);
-    const index = breadcrumbs.findIndex(b => b.id === breadcrumb.id);
+    const index = breadcrumbs.findIndex((b) => b.id === breadcrumb.id);
     setBreadcrumbs(breadcrumbs.slice(0, index + 1));
   };
 
   const getFileIcon = (item: DriveItem) => {
-    if (item.type === 'folder') {
+    if (item.type === "folder") {
       return <FolderOpen className="w-5 h-5 text-blue-500" />;
     }
-    
-    const mimeType = item.mimeType?.toLowerCase() || '';
-    if (mimeType.includes('image')) return <Image className="w-5 h-5 text-purple-500" />;
-    if (mimeType.includes('pdf')) return <FileText className="w-5 h-5 text-red-500" />;
-    if (mimeType.includes('word') || mimeType.includes('document')) return <FileText className="w-5 h-5 text-blue-500" />;
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return <FileText className="w-5 h-5 text-green-500" />;
+
+    const mimeType = item.mimeType?.toLowerCase() || "";
+    if (mimeType.includes("image"))
+      return <Image className="w-5 h-5 text-purple-500" />;
+    if (mimeType.includes("pdf"))
+      return <FileText className="w-5 h-5 text-red-500" />;
+    if (mimeType.includes("word") || mimeType.includes("document"))
+      return <FileText className="w-5 h-5 text-blue-500" />;
+    if (mimeType.includes("excel") || mimeType.includes("spreadsheet"))
+      return <FileText className="w-5 h-5 text-green-500" />;
     return <File className="w-5 h-5 text-gray-500" />;
   };
 
   const formatFileSize = (bytes?: number) => {
-    if (!bytes) return '';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    if (!bytes) return "";
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const goBack = () => {
-    window.location.href = '/dashboard';
+    window.location.href = "/dashboard";
   };
 
   if (!selectedProvider.connected) {
@@ -392,17 +460,17 @@ export function BrowsePage() {
             <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Cloud className="w-8 h-8 text-yellow-600" />
             </div>
-            
+
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
               Connect Your Drive
             </h1>
-            
+
             <p className="text-gray-600 mb-6">
               Please connect to a cloud storage provider to browse your files.
             </p>
-            
+
             <button
-              onClick={() => window.location.href = '/upload'}
+              onClick={() => (window.location.href = "/upload")}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors"
             >
               Connect Storage
@@ -429,14 +497,14 @@ export function BrowsePage() {
               </button>
               <div className="flex items-center">
                 <FileText className="w-8 h-8 text-blue-600 mr-3" />
-                <span className="text-xl font-bold text-gray-900">FilePilot</span>
+                <span className="text-xl font-bold text-gray-900">
+                  FilePilot
+                </span>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-600">
-                Browse Files
-              </div>
+              <div className="text-sm text-gray-600">Browse Files</div>
             </div>
           </div>
         </div>
@@ -449,14 +517,17 @@ export function BrowsePage() {
           {/* Provider Selection & Storage Info */}
           <div className="flex items-center space-x-4">
             <div className="flex items-center">
-              <selectedProvider.icon 
-                className="w-6 h-6 mr-2" 
+              <selectedProvider.icon
+                className="w-6 h-6 mr-2"
                 style={{ color: selectedProvider.color }}
               />
-              <span className="font-semibold text-gray-900">{selectedProvider.name}</span>
+              <span className="font-semibold text-gray-900">
+                {selectedProvider.name}
+              </span>
             </div>
             <div className="text-sm text-gray-500">
-              {selectedProvider.usedStorage} of {selectedProvider.totalStorage} used
+              {selectedProvider.usedStorage} of {selectedProvider.totalStorage}{" "}
+              used
             </div>
           </div>
 
@@ -464,23 +535,27 @@ export function BrowsePage() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
                 className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                  viewMode === "grid"
+                    ? "bg-white shadow-sm"
+                    : "hover:bg-gray-200"
                 }`}
               >
                 <Grid3X3 className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className={`p-2 rounded-md transition-colors ${
-                  viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
+                  viewMode === "list"
+                    ? "bg-white shadow-sm"
+                    : "hover:bg-gray-200"
                 }`}
               >
                 <List className="w-4 h-4" />
               </button>
             </div>
-            
+
             <button
               onClick={loadItems}
               className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -500,21 +575,21 @@ export function BrowsePage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                 placeholder="Search files and folders..."
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            
+
             {/* Search Button */}
             <button
               onClick={handleSearch}
               disabled={isSearching}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50"
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? "Searching..." : "Search"}
             </button>
-            
+
             {/* Filters Toggle */}
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -522,7 +597,11 @@ export function BrowsePage() {
             >
               <Filter className="w-4 h-4 mr-2" />
               Filters
-              <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`w-4 h-4 ml-2 transition-transform ${
+                  showFilters ? "rotate-180" : ""
+                }`}
+              />
             </button>
           </div>
 
@@ -531,10 +610,17 @@ export function BrowsePage() {
             <div className="mt-6 pt-6 border-t border-gray-200">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">File Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    File Type
+                  </label>
                   <select
                     value={searchFilters.fileType}
-                    onChange={(e) => setSearchFilters({...searchFilters, fileType: e.target.value})}
+                    onChange={(e) =>
+                      setSearchFilters({
+                        ...searchFilters,
+                        fileType: e.target.value,
+                      })
+                    }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Types</option>
@@ -544,12 +630,19 @@ export function BrowsePage() {
                     <option value="folders">Folders</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date Modified</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date Modified
+                  </label>
                   <select
                     value={searchFilters.dateRange}
-                    onChange={(e) => setSearchFilters({...searchFilters, dateRange: e.target.value})}
+                    onChange={(e) =>
+                      setSearchFilters({
+                        ...searchFilters,
+                        dateRange: e.target.value,
+                      })
+                    }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">Any Time</option>
@@ -559,12 +652,19 @@ export function BrowsePage() {
                     <option value="year">This Year</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category
+                  </label>
                   <select
                     value={searchFilters.category}
-                    onChange={(e) => setSearchFilters({...searchFilters, category: e.target.value})}
+                    onChange={(e) =>
+                      setSearchFilters({
+                        ...searchFilters,
+                        category: e.target.value,
+                      })
+                    }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Categories</option>
@@ -574,12 +674,19 @@ export function BrowsePage() {
                     <option value="projects">Projects</option>
                   </select>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">File Size</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    File Size
+                  </label>
                   <select
                     value={searchFilters.size}
-                    onChange={(e) => setSearchFilters({...searchFilters, size: e.target.value})}
+                    onChange={(e) =>
+                      setSearchFilters({
+                        ...searchFilters,
+                        size: e.target.value,
+                      })
+                    }
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">Any Size</option>
@@ -589,26 +696,40 @@ export function BrowsePage() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-6 mt-4">
                 <label className="flex items-center">
                   <input
                     type="checkbox"
                     checked={searchFilters.starred}
-                    onChange={(e) => setSearchFilters({...searchFilters, starred: e.target.checked})}
+                    onChange={(e) =>
+                      setSearchFilters({
+                        ...searchFilters,
+                        starred: e.target.checked,
+                      })
+                    }
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Starred only</span>
+                  <span className="ml-2 text-sm text-gray-700">
+                    Starred only
+                  </span>
                 </label>
-                
+
                 <label className="flex items-center">
                   <input
                     type="checkbox"
                     checked={searchFilters.shared}
-                    onChange={(e) => setSearchFilters({...searchFilters, shared: e.target.checked})}
+                    onChange={(e) =>
+                      setSearchFilters({
+                        ...searchFilters,
+                        shared: e.target.checked,
+                      })
+                    }
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="ml-2 text-sm text-gray-700">Shared files only</span>
+                  <span className="ml-2 text-sm text-gray-700">
+                    Shared files only
+                  </span>
                 </label>
               </div>
             </div>
@@ -638,7 +759,8 @@ export function BrowsePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <span className="text-sm font-medium text-blue-900">
-                  {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
+                  {selectedItems.length} item
+                  {selectedItems.length > 1 ? "s" : ""} selected
                 </span>
                 <button
                   onClick={() => setSelectedItems([])}
@@ -647,7 +769,7 @@ export function BrowsePage() {
                   Clear selection
                 </button>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <button className="p-2 text-blue-600 hover:text-blue-700 transition-colors">
                   <Download className="w-4 h-4" />
@@ -680,31 +802,30 @@ export function BrowsePage() {
             <div className="text-center py-12">
               <FolderOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {searchQuery ? 'No files found' : 'This folder is empty'}
+                {searchQuery ? "No files found" : "This folder is empty"}
               </h3>
               <p className="text-gray-600">
-                {searchQuery 
-                  ? 'Try adjusting your search terms or filters'
-                  : 'Upload files or create folders to get started'
-                }
+                {searchQuery
+                  ? "Try adjusting your search terms or filters"
+                  : "Upload files or create folders to get started"}
               </p>
             </div>
-          ) : viewMode === 'grid' ? (
+          ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-6">
               {items.map((item) => (
                 <div
                   key={item.id}
                   className={`group relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
                     selectedItems.includes(item.id)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-transparent hover:border-gray-300 hover:shadow-md'
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-transparent hover:border-gray-300 hover:shadow-md"
                   }`}
                   onClick={() => {
-                    if (item.type === 'folder') {
+                    if (item.type === "folder") {
                       handleFolderClick(item);
                     } else {
                       // Handle file click
-                      console.log('File clicked:', item);
+                      console.log("File clicked:", item);
                     }
                   }}
                 >
@@ -712,16 +833,18 @@ export function BrowsePage() {
                     <div className="flex justify-center mb-3">
                       {getFileIcon(item)}
                     </div>
-                    
+
                     <h3 className="text-sm font-medium text-gray-900 truncate mb-1">
                       {item.name}
                     </h3>
-                    
+
                     <div className="text-xs text-gray-500">
-                      {item.type === 'file' && item.size && formatFileSize(item.size)}
-                      {item.type === 'folder' && 'Folder'}
+                      {item.type === "file" &&
+                        item.size &&
+                        formatFileSize(item.size)}
+                      {item.type === "folder" && "Folder"}
                     </div>
-                    
+
                     {item.category && (
                       <div className="mt-2">
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -730,20 +853,28 @@ export function BrowsePage() {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Action buttons */}
                   <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleStarred(item.id, !item.starred, selectedProvider.id);
+                        toggleStarred(
+                          item.id,
+                          !item.starred,
+                          selectedProvider.id
+                        );
                       }}
                       className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
                     >
-                      <Star className={`w-4 h-4 ${item.starred ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                      <Star
+                        className={`w-4 h-4 ${
+                          item.starred ? "fill-yellow-500 text-yellow-500" : ""
+                        }`}
+                      />
                     </button>
                   </div>
-                  
+
                   {/* Selection checkbox */}
                   <div className="absolute top-2 left-2">
                     <input
@@ -754,7 +885,9 @@ export function BrowsePage() {
                         if (e.target.checked) {
                           setSelectedItems([...selectedItems, item.id]);
                         } else {
-                          setSelectedItems(selectedItems.filter(id => id !== item.id));
+                          setSelectedItems(
+                            selectedItems.filter((id) => id !== item.id)
+                          );
                         }
                       }}
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -771,10 +904,13 @@ export function BrowsePage() {
                     <th className="px-6 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedItems.length === items.length && items.length > 0}
+                        checked={
+                          selectedItems.length === items.length &&
+                          items.length > 0
+                        }
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedItems(items.map(item => item.id));
+                            setSelectedItems(items.map((item) => item.id));
                           } else {
                             setSelectedItems([]);
                           }
@@ -804,7 +940,7 @@ export function BrowsePage() {
                     <tr
                       key={item.id}
                       className={`hover:bg-gray-50 transition-colors ${
-                        selectedItems.includes(item.id) ? 'bg-blue-50' : ''
+                        selectedItems.includes(item.id) ? "bg-blue-50" : ""
                       }`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -815,7 +951,9 @@ export function BrowsePage() {
                             if (e.target.checked) {
                               setSelectedItems([...selectedItems, item.id]);
                             } else {
-                              setSelectedItems(selectedItems.filter(id => id !== item.id));
+                              setSelectedItems(
+                                selectedItems.filter((id) => id !== item.id)
+                              );
                             }
                           }}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -827,7 +965,7 @@ export function BrowsePage() {
                           <div className="ml-3">
                             <button
                               onClick={() => {
-                                if (item.type === 'folder') {
+                                if (item.type === "folder") {
                                   handleFolderClick(item);
                                 }
                               }}
@@ -847,7 +985,9 @@ export function BrowsePage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.type === 'file' && item.size ? formatFileSize(item.size) : '—'}
+                        {item.type === "file" && item.size
+                          ? formatFileSize(item.size)
+                          : "—"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(item.modifiedTime)}

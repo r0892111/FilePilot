@@ -4,6 +4,7 @@ import App from './App.tsx';
 import SuccessPage from './SuccessPage.tsx';
 import { AuthPage } from './components/AuthPage.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
+import { UploadPage } from './components/UploadPage.tsx';
 import './index.css';
 
 // Simple client-side routing
@@ -26,6 +27,9 @@ const AppComponent = () => {
   }
   if (path === '/dashboard') {
     return <Dashboard />;
+  }
+  if (path === '/upload') {
+    return <UploadPage />;
   }
   return <App />;
 };

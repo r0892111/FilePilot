@@ -394,7 +394,10 @@ export function Dashboard() {
             <p className="text-blue-100 mb-4">
               Drag and drop files or browse to upload documents for automatic organization.
             </p>
-            <button className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors">
+            <button 
+              onClick={() => window.location.href = '/upload'}
+              className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+            >
               Upload Files
             </button>
           </div>

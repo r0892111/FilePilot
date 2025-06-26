@@ -1,13 +1,12 @@
 
 export const fetchGoogleDriveFiles = async (accessToken: string) => {
     try {
-        const response = await fetch('https://www.googleapis.com/drive/v3/files?pageSize=100&fields=files(id,name,parents)', {
+        const response = await fetch('https://www.googleapis.com/drive/v3/files?pageSize=100&fields=files(id,name,parents,mimeType)', {
             headers: {
                 Authorization: `Bearer ${accessToken}`,
             },
         });
         console.log('Fetching Google Drive files with access token:', accessToken);
-        console.log('Response status:', response);
         if (!response.ok) {
             throw new Error('Failed to fetch files');
         }

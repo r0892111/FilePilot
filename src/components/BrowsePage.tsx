@@ -51,6 +51,14 @@ interface DriveItem {
   id: string;
   name: string;
   mimeType: string;
+  size?: string;
+  modifiedTime?: string;
+  createdTime?: string;
+  starred?: boolean;
+  shared?: boolean;
+  webViewLink?: string;
+  downloadLink?: string;
+  thumbnailLink?: string;
 }
 
 interface CloudProvider {
@@ -75,7 +83,6 @@ interface SearchFilters {
 interface BreadcrumbItem {
   id: string;
   name: string;
-  path: string;
 }
 
 const cloudProviders: CloudProvider[] = [
@@ -121,12 +128,14 @@ export function BrowsePage() {
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [currentPath, setCurrentPath] = useState("/");
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([
-    { id: "root", name: "My Drive", path: "/" },
+    { id: "root", name: "My Drive" },
   ]);
-  const [items, setItems] = useState<DriveItem[]>([]);
+  const [allItems, setAllItems] = useState<DriveItem[]>([]);
+  const [currentItems, setCurrentItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [folderStructure, setFolderStructure] = useState<Map<string, DriveItem[]>>(new Map());
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     fileType: "all",
     dateRange: "all",
@@ -136,28 +145,122 @@ export function BrowsePage() {
     shared: false,
   });
 
-  // Data fetching stubs - replace with actual API calls
+  // Helper function to determine if item is a folder
+  const isFolder = (item: DriveItem): boolean => {
+    return item.mimeType === 'application/vnd.google-apps.folder';
+  };
+
+  // Helper function to get file type from mimeType
+  const getFileType = (mimeType: string): string => {
+    if (mimeType === 'application/vnd.google-apps.folder') return 'folder';
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    if (mimeType === 'application/pdf') return 'pdf';
+    if (mimeType.includes('document') || mimeType.includes('word')) return 'document';
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return 'spreadsheet';
+    if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'presentation';
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return 'archive';
+    if (mimeType.includes('text') || mimeType.includes('code')) return 'text';
+    return 'file';
+  };
+
+  // Build folder structure from flat array
+  const buildFolderStructure = (items: DriveItem[]): Map<string, DriveItem[]> => {
+    const structure = new Map<string, DriveItem[]>();
+    
+    items.forEach(item => {
+      const parentId = item.parents?.[0] || 'root';
+      
+      if (!structure.has(parentId)) {
+        structure.set(parentId, []);
+      }
+      
+      structure.get(parentId)!.push(item);
+    });
+
+    return structure;
+  };
+
+  // Build breadcrumbs from current folder to root
+  const buildBreadcrumbs = (folderId: string | null, items: DriveItem[]): BreadcrumbItem[] => {
+    if (!folderId || folderId === 'root') {
+      return [{ id: 'root', name: 'My Drive' }];
+    }
+
+    const breadcrumbs: BreadcrumbItem[] = [];
+    let currentId: string | null = folderId;
+
+    while (currentId && currentId !== 'root') {
+      const folder = items.find(item => item.id === currentId);
+      if (folder) {
+        breadcrumbs.unshift({ id: folder.id, name: folder.name });
+        currentId = folder.parents?.[0] || 'root';
+      } else {
+        break;
+      }
+    }
+
+    breadcrumbs.unshift({ id: 'root', name: 'My Drive' });
+    return breadcrumbs;
+  };
+
+  // Data fetching functions
   const fetchDriveItems = async (
-    path: string,
     providerId: string
   ): Promise<DriveItem[]> => {
-    // TODO: Implement actual API call to fetch drive items
-    // This is a stub that returns mock data
     setIsLoading(true);
 
     try {
-      let items;
-      const accessToken = (await supabase.auth.getSession()).data.session
-        ?.provider_token;
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.provider_token;
+      
       if (selectedProvider.id === "google-drive" && accessToken) {
-        items = await fetchGoogleDriveFiles(accessToken).then((files) => {
-          // Map Google Drive files to your DriveItem type if needed
-          // setItems(mappedFiles);
-          console.log(files);
-        });
+        const items = await fetchGoogleDriveFiles(accessToken);
+        console.log('Fetched Google Drive items:', items);
+        return items || [];
       }
 
-      return items;
+      // Fallback mock data for other providers or when no token
+      const mockItems: DriveItem[] = [
+        {
+          id: "1",
+          name: "Documents",
+          mimeType: "application/vnd.google-apps.folder",
+        },
+        {
+          id: "2",
+          name: "Financial Report Q4.pdf",
+          mimeType: "application/pdf",
+          parents: ["1"],
+          size: "2457600",
+          modifiedTime: "2024-01-14T15:45:00Z",
+          starred: true,
+        },
+        {
+          id: "3",
+          name: "TnS.mp4",
+          mimeType: "video/mp4",
+          parents: ["1"],
+          size: "15728640",
+          modifiedTime: "2024-01-13T12:20:00Z",
+        },
+        {
+          id: "4",
+          name: "Project Images",
+          mimeType: "application/vnd.google-apps.folder",
+        },
+        {
+          id: "5",
+          name: "screenshot.png",
+          mimeType: "image/png",
+          parents: ["4"],
+          size: "1024000",
+          modifiedTime: "2024-01-12T10:30:00Z",
+        },
+      ];
+
+      return mockItems;
     } catch (error) {
       console.error("Error fetching drive items:", error);
       return [];
@@ -171,34 +274,23 @@ export function BrowsePage() {
     filters: SearchFilters,
     providerId: string
   ): Promise<DriveItem[]> => {
-    // TODO: Implement actual search API call
-    // This is a stub that returns filtered mock data
     setIsSearching(true);
 
     try {
+      // Filter items based on search query and filters
+      let filteredItems = allItems.filter(item => {
+        const matchesQuery = !query || item.name.toLowerCase().includes(query.toLowerCase());
+        const matchesType = filters.fileType === 'all' || getFileType(item.mimeType) === filters.fileType;
+        const matchesStarred = !filters.starred || item.starred;
+        const matchesShared = !filters.shared || item.shared;
+        
+        return matchesQuery && matchesType && matchesStarred && matchesShared;
+      });
+
       // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Mock search results - replace with actual API response
-      const mockResults: DriveItem[] = [
-        {
-          id: "search1",
-          name: "Contract Agreement.docx",
-          type: "file",
-          size: 1024000,
-          mimeType:
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          modifiedTime: "2024-01-12T14:30:00Z",
-          createdTime: "2024-01-12T14:30:00Z",
-          path: "/Legal/Contract Agreement.docx",
-          starred: false,
-          shared: true,
-          category: "Legal",
-          tags: ["contract", "agreement"],
-        },
-      ];
-
-      return mockResults;
+      return filteredItems;
     } catch (error) {
       console.error("Error searching drive items:", error);
       return [];
@@ -207,18 +299,15 @@ export function BrowsePage() {
     }
   };
 
+  // CRUD operation stubs
   const createFolder = async (
     name: string,
-    parentPath: string,
+    parentId: string,
     providerId: string
   ): Promise<boolean> => {
-    // TODO: Implement actual folder creation API call
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(
-        `Creating folder "${name}" in "${parentPath}" on ${providerId}`
-      );
+      console.log(`Creating folder "${name}" in parent "${parentId}" on ${providerId}`);
       return true;
     } catch (error) {
       console.error("Error creating folder:", error);
@@ -230,9 +319,7 @@ export function BrowsePage() {
     itemIds: string[],
     providerId: string
   ): Promise<boolean> => {
-    // TODO: Implement actual delete API call
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
       console.log(`Deleting items ${itemIds.join(", ")} from ${providerId}`);
       return true;
@@ -244,16 +331,12 @@ export function BrowsePage() {
 
   const moveItems = async (
     itemIds: string[],
-    targetPath: string,
+    targetFolderId: string,
     providerId: string
   ): Promise<boolean> => {
-    // TODO: Implement actual move API call
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(
-        `Moving items ${itemIds.join(", ")} to "${targetPath}" on ${providerId}`
-      );
+      console.log(`Moving items ${itemIds.join(", ")} to folder "${targetFolderId}" on ${providerId}`);
       return true;
     } catch (error) {
       console.error("Error moving items:", error);
@@ -263,18 +346,12 @@ export function BrowsePage() {
 
   const copyItems = async (
     itemIds: string[],
-    targetPath: string,
+    targetFolderId: string,
     providerId: string
   ): Promise<boolean> => {
-    // TODO: Implement actual copy API call
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(
-        `Copying items ${itemIds.join(
-          ", "
-        )} to "${targetPath}" on ${providerId}`
-      );
+      console.log(`Copying items ${itemIds.join(", ")} to folder "${targetFolderId}" on ${providerId}`);
       return true;
     } catch (error) {
       console.error("Error copying items:", error);
@@ -287,13 +364,15 @@ export function BrowsePage() {
     starred: boolean,
     providerId: string
   ): Promise<boolean> => {
-    // TODO: Implement actual star toggle API call
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 300));
-      console.log(
-        `${starred ? "Starring" : "Unstarring"} item ${itemId} on ${providerId}`
-      );
+      console.log(`${starred ? "Starring" : "Unstarring"} item ${itemId} on ${providerId}`);
+      
+      // Update local state
+      setAllItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, starred } : item
+      ));
+      
       return true;
     } catch (error) {
       console.error("Error toggling starred status:", error);
@@ -306,13 +385,9 @@ export function BrowsePage() {
     permissions: string,
     providerId: string
   ): Promise<string | null> => {
-    // TODO: Implement actual sharing API call
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 500));
-      console.log(
-        `Sharing item ${itemId} with ${permissions} on ${providerId}`
-      );
+      console.log(`Sharing item ${itemId} with ${permissions} on ${providerId}`);
       return "https://example.com/shared/item";
     } catch (error) {
       console.error("Error sharing item:", error);
@@ -325,19 +400,33 @@ export function BrowsePage() {
     if (selectedProvider.connected) {
       loadItems();
     }
-  }, [selectedProvider, currentPath]);
+  }, [selectedProvider]);
+
+  // Update current items when folder changes
+  useEffect(() => {
+    if (allItems.length > 0) {
+      const structure = buildFolderStructure(allItems);
+      setFolderStructure(structure);
+      
+      const itemsInCurrentFolder = structure.get(currentFolderId || 'root') || [];
+      setCurrentItems(itemsInCurrentFolder);
+      
+      const newBreadcrumbs = buildBreadcrumbs(currentFolderId, allItems);
+      setBreadcrumbs(newBreadcrumbs);
+    }
+  }, [allItems, currentFolderId]);
 
   const loadItems = async () => {
-    const fetchedItems = await fetchDriveItems(
-      currentPath,
-      selectedProvider.id
-    );
-    setItems(fetchedItems);
+    const fetchedItems = await fetchDriveItems(selectedProvider.id);
+    setAllItems(fetchedItems);
   };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      loadItems();
+      // Reset to current folder view
+      const structure = buildFolderStructure(allItems);
+      const itemsInCurrentFolder = structure.get(currentFolderId || 'root') || [];
+      setCurrentItems(itemsInCurrentFolder);
       return;
     }
 
@@ -346,55 +435,61 @@ export function BrowsePage() {
       searchFilters,
       selectedProvider.id
     );
-    setItems(results);
+    setCurrentItems(results);
   };
 
   const handleFolderClick = (folder: DriveItem) => {
-    const newPath = folder.path;
-    setCurrentPath(newPath);
-
-    const newBreadcrumbs = [
-      ...breadcrumbs,
-      {
-        id: folder.id,
-        name: folder.name,
-        path: newPath,
-      },
-    ];
-    setBreadcrumbs(newBreadcrumbs);
+    if (isFolder(folder)) {
+      setCurrentFolderId(folder.id);
+      setSelectedItems([]); // Clear selections when navigating
+    }
   };
 
   const handleBreadcrumbClick = (breadcrumb: BreadcrumbItem) => {
-    setCurrentPath(breadcrumb.path);
-    const index = breadcrumbs.findIndex((b) => b.id === breadcrumb.id);
-    setBreadcrumbs(breadcrumbs.slice(0, index + 1));
+    const folderId = breadcrumb.id === 'root' ? null : breadcrumb.id;
+    setCurrentFolderId(folderId);
+    setSelectedItems([]); // Clear selections when navigating
   };
 
   const getFileIcon = (item: DriveItem) => {
-    if (item.type === "folder") {
-      return <FolderOpen className="w-5 h-5 text-blue-500" />;
+    const fileType = getFileType(item.mimeType);
+    
+    switch (fileType) {
+      case 'folder':
+        return <FolderOpen className="w-5 h-5 text-blue-500" />;
+      case 'image':
+        return <Image className="w-5 h-5 text-purple-500" />;
+      case 'video':
+        return <Video className="w-5 h-5 text-red-500" />;
+      case 'audio':
+        return <Music className="w-5 h-5 text-green-500" />;
+      case 'pdf':
+        return <FileText className="w-5 h-5 text-red-500" />;
+      case 'document':
+        return <FileText className="w-5 h-5 text-blue-500" />;
+      case 'spreadsheet':
+        return <FileText className="w-5 h-5 text-green-500" />;
+      case 'presentation':
+        return <FileText className="w-5 h-5 text-orange-500" />;
+      case 'archive':
+        return <Archive className="w-5 h-5 text-yellow-500" />;
+      case 'text':
+        return <Code className="w-5 h-5 text-gray-500" />;
+      default:
+        return <File className="w-5 h-5 text-gray-500" />;
     }
-
-    const mimeType = item.mimeType?.toLowerCase() || "";
-    if (mimeType.includes("image"))
-      return <Image className="w-5 h-5 text-purple-500" />;
-    if (mimeType.includes("pdf"))
-      return <FileText className="w-5 h-5 text-red-500" />;
-    if (mimeType.includes("word") || mimeType.includes("document"))
-      return <FileText className="w-5 h-5 text-blue-500" />;
-    if (mimeType.includes("excel") || mimeType.includes("spreadsheet"))
-      return <FileText className="w-5 h-5 text-green-500" />;
-    return <File className="w-5 h-5 text-gray-500" />;
   };
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "";
+  const formatFileSize = (sizeString?: string) => {
+    if (!sizeString) return "";
+    const bytes = parseInt(sizeString);
     const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -580,10 +675,11 @@ export function BrowsePage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Types</option>
-                    <option value="documents">Documents</option>
-                    <option value="images">Images</option>
-                    <option value="videos">Videos</option>
-                    <option value="folders">Folders</option>
+                    <option value="folder">Folders</option>
+                    <option value="document">Documents</option>
+                    <option value="image">Images</option>
+                    <option value="video">Videos</option>
+                    <option value="pdf">PDF Files</option>
                   </select>
                 </div>
 
@@ -611,28 +707,6 @@ export function BrowsePage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={searchFilters.category}
-                    onChange={(e) =>
-                      setSearchFilters({
-                        ...searchFilters,
-                        category: e.target.value,
-                      })
-                    }
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="all">All Categories</option>
-                    <option value="finance">Finance</option>
-                    <option value="legal">Legal</option>
-                    <option value="marketing">Marketing</option>
-                    <option value="projects">Projects</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     File Size
                   </label>
                   <select
@@ -646,47 +720,49 @@ export function BrowsePage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">Any Size</option>
-                    <option value="small">Small (&lt; 1MB)</option>
+                    <option value="small">Small (< 1MB)</option>
                     <option value="medium">Medium (1-10MB)</option>
-                    <option value="large">Large (&gt; 10MB)</option>
+                    <option value="large">Large (> 10MB)</option>
                   </select>
                 </div>
-              </div>
 
-              <div className="flex items-center space-x-6 mt-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={searchFilters.starred}
-                    onChange={(e) =>
-                      setSearchFilters({
-                        ...searchFilters,
-                        starred: e.target.checked,
-                      })
-                    }
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">
-                    Starred only
-                  </span>
-                </label>
+                <div className="flex flex-col justify-end">
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={searchFilters.starred}
+                        onChange={(e) =>
+                          setSearchFilters({
+                            ...searchFilters,
+                            starred: e.target.checked,
+                          })
+                        }
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        Starred only
+                      </span>
+                    </label>
 
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={searchFilters.shared}
-                    onChange={(e) =>
-                      setSearchFilters({
-                        ...searchFilters,
-                        shared: e.target.checked,
-                      })
-                    }
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">
-                    Shared files only
-                  </span>
-                </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={searchFilters.shared}
+                        onChange={(e) =>
+                          setSearchFilters({
+                            ...searchFilters,
+                            shared: e.target.checked,
+                          })
+                        }
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">
+                        Shared files only
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -754,7 +830,7 @@ export function BrowsePage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">Loading files...</span>
             </div>
-          ) : items.length === 0 ? (
+          ) : currentItems.length === 0 ? (
             <div className="text-center py-12">
               <FolderOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -768,7 +844,7 @@ export function BrowsePage() {
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-6">
-              {items.map((item) => (
+              {currentItems.map((item) => (
                 <div
                   key={item.id}
                   className={`group relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
@@ -777,10 +853,9 @@ export function BrowsePage() {
                       : "border-transparent hover:border-gray-300 hover:shadow-md"
                   }`}
                   onClick={() => {
-                    if (item.type === "folder") {
+                    if (isFolder(item)) {
                       handleFolderClick(item);
                     } else {
-                      // Handle file click
                       console.log("File clicked:", item);
                     }
                   }}
@@ -795,17 +870,13 @@ export function BrowsePage() {
                     </h3>
 
                     <div className="text-xs text-gray-500">
-                      {item.type === "file" &&
-                        item.size &&
-                        formatFileSize(item.size)}
-                      {item.type === "folder" && "Folder"}
+                      {!isFolder(item) && item.size && formatFileSize(item.size)}
+                      {isFolder(item) && "Folder"}
                     </div>
 
-                    {item.category && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {item.category}
-                        </span>
+                    {item.modifiedTime && (
+                      <div className="text-xs text-gray-400 mt-1">
+                        {formatDate(item.modifiedTime)}
                       </div>
                     )}
                   </div>
@@ -861,12 +932,12 @@ export function BrowsePage() {
                       <input
                         type="checkbox"
                         checked={
-                          selectedItems.length === items.length &&
-                          items.length > 0
+                          selectedItems.length === currentItems.length &&
+                          currentItems.length > 0
                         }
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedItems(items.map((item) => item.id));
+                            setSelectedItems(currentItems.map((item) => item.id));
                           } else {
                             setSelectedItems([]);
                           }
@@ -884,7 +955,7 @@ export function BrowsePage() {
                       Modified
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+                      Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -892,7 +963,7 @@ export function BrowsePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => (
+                  {currentItems.map((item) => (
                     <tr
                       key={item.id}
                       className={`hover:bg-gray-50 transition-colors ${
@@ -921,7 +992,7 @@ export function BrowsePage() {
                           <div className="ml-3">
                             <button
                               onClick={() => {
-                                if (item.type === "folder") {
+                                if (isFolder(item)) {
                                   handleFolderClick(item);
                                 }
                               }}
@@ -941,21 +1012,17 @@ export function BrowsePage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.type === "file" && item.size
+                        {!isFolder(item) && item.size
                           ? formatFileSize(item.size)
                           : "—"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(item.modifiedTime)}
+                        {item.modifiedTime ? formatDate(item.modifiedTime) : "—"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {item.category ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {item.category}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-400">—</span>
-                        )}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 capitalize">
+                          {getFileType(item.mimeType)}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center space-x-2">

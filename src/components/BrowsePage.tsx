@@ -39,6 +39,7 @@ import {
   Code,
   Home,
   Upload as UploadIcon,
+  ChevronLeft,
 } from "lucide-react";
 import {
   fetchGoogleDriveFiles,
@@ -76,6 +77,15 @@ interface BreadcrumbItem {
   path: string;
 }
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  startItem: number;
+  endItem: number;
+}
+
 export function BrowsePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -92,6 +102,19 @@ export function BrowsePage() {
   ]);
   const [items, setItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [allItems, setAllItems] = useState<DriveItem[]>([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 20,
+    startItem: 0,
+    endItem: 0,
+  });
 
   useEffect(() => {
     const loadGoogleDriveItems = async () => {
@@ -132,6 +155,7 @@ export function BrowsePage() {
               ? `/folder/${file.parents[0]}`
               : "/",
         }));
+        setAllItems(mappedFiles);
         setItems(mappedFiles);
       } catch (error) {
         setItems([]);
@@ -143,6 +167,53 @@ export function BrowsePage() {
 
     loadGoogleDriveItems();
   }, [currentFolderId]);
+
+  // Update pagination info when items change
+  useEffect(() => {
+    updatePaginationInfo();
+  }, [items, currentPage, itemsPerPage]);
+
+  // Reset to first page when search or folder changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, currentFolderId]);
+
+  const updatePaginationInfo = () => {
+    const totalItems = sortedItems.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    setPaginationInfo({
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      startItem: totalItems > 0 ? startItem : 0,
+      endItem,
+    });
+  };
+
+  const loadItems = (folderId: string) => {
+    setIsLoading(true);
+
+    // Simulate API delay
+    setTimeout(() => {
+      const folderItems = allItems.filter((item) => {
+        if (folderId === "root") {
+          return (
+            !item.parents ||
+            item.parents.includes("root") ||
+            item.parents.length === 0
+          );
+        }
+        return item.parents && item.parents.includes(folderId);
+      });
+
+      setItems(folderItems);
+      setIsLoading(false);
+    }, 500);
+  };
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -252,6 +323,133 @@ export function BrowsePage() {
     return sortOrder === "asc" ? comparison : -comparison;
   });
 
+  // Get paginated items
+  const paginatedItems = sortedItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when changing pages
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  const renderPaginationControls = () => {
+    if (paginationInfo.totalPages <= 1) return null;
+
+    const getPageNumbers = () => {
+      const pages = [];
+      const { currentPage, totalPages } = paginationInfo;
+      
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate range around current page
+      let start = Math.max(2, currentPage - 2);
+      let end = Math.min(totalPages - 1, currentPage + 2);
+      
+      // Add ellipsis after first page if needed
+      if (start > 2) {
+        pages.push('...');
+      }
+      
+      // Add pages around current page
+      for (let i = start; i <= end; i++) {
+        if (i !== 1 && i !== totalPages) {
+          pages.push(i);
+        }
+      }
+      
+      // Add ellipsis before last page if needed
+      if (end < totalPages - 1) {
+        pages.push('...');
+      }
+      
+      // Always show last page if more than 1 page
+      if (totalPages > 1) {
+        pages.push(totalPages);
+      }
+      
+      return pages;
+    };
+
+    return (
+      <div className="bg-white border-t border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          {/* Items per page selector */}
+          <div className="flex items-center space-x-4">
+            <span className="text-sm text-gray-700">Items per page:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+              className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+
+          {/* Page info */}
+          <div className="text-sm text-gray-700">
+            Showing {paginationInfo.startItem} to {paginationInfo.endItem} of{' '}
+            {paginationInfo.totalItems} items
+          </div>
+
+          {/* Pagination controls */}
+          <div className="flex items-center space-x-2">
+            {/* Previous button */}
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 rounded-md border border-gray-300 text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Page numbers */}
+            <div className="flex items-center space-x-1">
+              {getPageNumbers().map((page, index) => (
+                <React.Fragment key={index}>
+                  {page === '...' ? (
+                    <span className="px-3 py-2 text-gray-500">...</span>
+                  ) : (
+                    <button
+                      onClick={() => handlePageChange(page as number)}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+
+            {/* Next button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === paginationInfo.totalPages}
+              className="p-2 rounded-md border border-gray-300 text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -290,7 +488,9 @@ export function BrowsePage() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 space-y-4 lg:space-y-0">
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold text-gray-900">Browse Files</h1>
-            <div className="text-sm text-gray-500">{items.length} items</div>
+            <div className="text-sm text-gray-500">
+              {paginationInfo.totalItems} items total
+            </div>
           </div>
 
           {/* View Controls */}
@@ -451,7 +651,7 @@ export function BrowsePage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">Loading files...</span>
             </div>
-          ) : sortedItems.length === 0 ? (
+          ) : paginatedItems.length === 0 ? (
             <div className="text-center py-12">
               <FolderOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -465,7 +665,7 @@ export function BrowsePage() {
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-6">
-              {sortedItems.map((item) => (
+              {paginatedItems.map((item) => (
                 <div
                   key={item.id}
                   className={`group relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
@@ -558,13 +758,13 @@ export function BrowsePage() {
                       <input
                         type="checkbox"
                         checked={
-                          selectedItems.length === sortedItems.length &&
-                          sortedItems.length > 0
+                          selectedItems.length === paginatedItems.length &&
+                          paginatedItems.length > 0
                         }
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedItems(
-                              sortedItems.map((item) => item.id)
+                              paginatedItems.map((item) => item.id)
                             );
                           } else {
                             setSelectedItems([]);
@@ -591,7 +791,7 @@ export function BrowsePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedItems.map((item) => (
+                  {paginatedItems.map((item) => (
                     <tr
                       key={item.id}
                       className={`hover:bg-gray-50 transition-colors ${
@@ -676,6 +876,9 @@ export function BrowsePage() {
               </table>
             </div>
           )}
+
+          {/* Pagination Controls */}
+          {renderPaginationControls()}
         </div>
 
         {/* Floating Action Button */}

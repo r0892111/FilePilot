@@ -32,7 +32,11 @@ import {
   ChevronDown,
   X,
   Plus,
-  Folder
+  Folder,
+  Video,
+  Music,
+  Archive,
+  Code
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -40,24 +44,24 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
-// Types for file system items
+// Types for Google Drive API format
 interface DriveItem {
   id: string;
   name: string;
-  type: 'folder' | 'file';
-  size?: number;
-  mimeType?: string;
-  modifiedTime: string;
-  createdTime: string;
-  path: string;
-  parentId?: string;
-  starred: boolean;
-  shared: boolean;
-  category?: string;
-  tags?: string[];
-  thumbnail?: string;
+  mimeType: string;
+  parents?: string[];
+  size?: string;
+  modifiedTime?: string;
+  createdTime?: string;
+  starred?: boolean;
+  shared?: boolean;
   webViewLink?: string;
   downloadLink?: string;
+  thumbnailLink?: string;
+  // Computed properties
+  type?: 'folder' | 'file';
+  children?: DriveItem[];
+  path?: string;
 }
 
 interface CloudProvider {
@@ -124,11 +128,13 @@ export function BrowsePage() {
   const [sortBy, setSortBy] = useState<'name' | 'modified' | 'size' | 'type'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [currentPath, setCurrentPath] = useState('/');
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([
     { id: 'root', name: 'My Drive', path: '/' }
   ]);
-  const [items, setItems] = useState<DriveItem[]>([]);
+  const [allItems, setAllItems] = useState<DriveItem[]>([]);
+  const [currentItems, setCurrentItems] = useState<DriveItem[]>([]);
+  const [folderStructure, setFolderStructure] = useState<Map<string, DriveItem[]>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     fileType: 'all',
@@ -139,51 +145,173 @@ export function BrowsePage() {
     shared: false
   });
 
-  // Data fetching stubs - replace with actual API calls
-  const fetchDriveItems = async (path: string, providerId: string): Promise<DriveItem[]> => {
-    // TODO: Implement actual API call to fetch drive items
-    // This is a stub that returns mock data
+  // Helper function to determine if item is a folder
+  const isFolder = (item: DriveItem): boolean => {
+    return item.mimeType === 'application/vnd.google-apps.folder';
+  };
+
+  // Helper function to build folder structure
+  const buildFolderStructure = (items: DriveItem[]): Map<string, DriveItem[]> => {
+    const structure = new Map<string, DriveItem[]>();
+    
+    // Initialize with root folder
+    structure.set('root', []);
+    
+    // Group items by their parent
+    items.forEach(item => {
+      const parentId = item.parents?.[0] || 'root';
+      
+      if (!structure.has(parentId)) {
+        structure.set(parentId, []);
+      }
+      
+      // Add computed type property
+      item.type = isFolder(item) ? 'folder' : 'file';
+      
+      structure.get(parentId)!.push(item);
+    });
+    
+    return structure;
+  };
+
+  // Helper function to build breadcrumb path
+  const buildBreadcrumbs = (folderId: string | null, items: DriveItem[]): BreadcrumbItem[] => {
+    if (!folderId || folderId === 'root') {
+      return [{ id: 'root', name: 'My Drive', path: '/' }];
+    }
+    
+    const breadcrumbs: BreadcrumbItem[] = [];
+    let currentId: string | null = folderId;
+    
+    // Build path from current folder to root
+    while (currentId && currentId !== 'root') {
+      const folder = items.find(item => item.id === currentId);
+      if (folder) {
+        breadcrumbs.unshift({
+          id: folder.id,
+          name: folder.name,
+          path: `/${folder.name}`
+        });
+        currentId = folder.parents?.[0] || 'root';
+      } else {
+        break;
+      }
+    }
+    
+    // Add root at the beginning
+    breadcrumbs.unshift({ id: 'root', name: 'My Drive', path: '/' });
+    
+    return breadcrumbs;
+  };
+
+  // Data fetching stubs
+  const fetchDriveItems = async (providerId: string): Promise<DriveItem[]> => {
     setIsLoading(true);
     
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock data - replace with actual API response
+      // Mock data in Google Drive API format
       const mockItems: DriveItem[] = [
+        // Root level folders
         {
-          id: '1',
+          id: '1UvL1HQWJ0PGxMORmfYOoGZ5_unGd6cQI',
           name: 'Documents',
-          type: 'folder',
+          mimeType: 'application/vnd.google-apps.folder',
           modifiedTime: '2024-01-15T10:30:00Z',
           createdTime: '2024-01-01T09:00:00Z',
-          path: '/Documents',
           starred: false,
           shared: false
         },
         {
-          id: '2',
-          name: 'Financial Report Q4.pdf',
-          type: 'file',
-          size: 2457600,
-          mimeType: 'application/pdf',
+          id: '2BcD3EfG4HiJ5KlM6NoP7QrS8TuV9WxY',
+          name: 'Projects',
+          mimeType: 'application/vnd.google-apps.folder',
+          modifiedTime: '2024-01-10T14:20:00Z',
+          createdTime: '2024-01-05T09:00:00Z',
+          starred: true,
+          shared: false
+        },
+        // Files in root
+        {
+          id: '3CdE4FgH5IjK6LmN7OpQ8RsT9UvW0XyZ',
+          name: 'Important_Notes.txt',
+          mimeType: 'text/plain',
+          parents: [],
+          size: '2048',
+          modifiedTime: '2024-01-20T16:45:00Z',
+          createdTime: '2024-01-20T16:45:00Z',
+          starred: false,
+          shared: false
+        },
+        // Files in Documents folder
+        {
+          id: '1Lsh3NYUSFd1r-jP_KQXLVxO2rqyjJbEG',
+          name: 'TnS.mp4',
+          mimeType: 'video/mp4',
+          parents: ['1UvL1HQWJ0PGxMORmfYOoGZ5_unGd6cQI'],
+          size: '52428800',
           modifiedTime: '2024-01-14T15:45:00Z',
           createdTime: '2024-01-14T15:45:00Z',
-          path: '/Financial Report Q4.pdf',
           starred: true,
-          shared: false,
-          category: 'Finance',
-          tags: ['report', 'quarterly']
+          shared: false
         },
         {
-          id: '3',
-          name: 'Project Images',
-          type: 'folder',
-          modifiedTime: '2024-01-13T12:20:00Z',
-          createdTime: '2024-01-10T08:15:00Z',
-          path: '/Project Images',
+          id: '4DeF5GhI6JkL7MnO8PqR9StU0VwX1YzA',
+          name: 'Financial_Report_Q4.pdf',
+          mimeType: 'application/pdf',
+          parents: ['1UvL1HQWJ0PGxMORmfYOoGZ5_unGd6cQI'],
+          size: '2457600',
+          modifiedTime: '2024-01-14T15:45:00Z',
+          createdTime: '2024-01-14T15:45:00Z',
           starred: false,
           shared: true
+        },
+        {
+          id: '5EfG6HiJ7KlM8NoP9QrS0TuV1WxY2ZaB',
+          name: 'Contract_Agreement.docx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          parents: ['1UvL1HQWJ0PGxMORmfYOoGZ5_unGd6cQI'],
+          size: '1024000',
+          modifiedTime: '2024-01-12T14:30:00Z',
+          createdTime: '2024-01-12T14:30:00Z',
+          starred: false,
+          shared: true
+        },
+        // Subfolder in Documents
+        {
+          id: '6FgH7IjK8LmN9OpQ0RsT1UvW2XyZ3AbC',
+          name: 'Legal',
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: ['1UvL1HQWJ0PGxMORmfYOoGZ5_unGd6cQI'],
+          modifiedTime: '2024-01-08T11:15:00Z',
+          createdTime: '2024-01-08T11:15:00Z',
+          starred: false,
+          shared: false
+        },
+        // Files in Projects folder
+        {
+          id: '7GhI8JkL9MnO0PqR1StU2VwX3YzA4BcD',
+          name: 'Project_Specs.xlsx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          parents: ['2BcD3EfG4HiJ5KlM6NoP7QrS8TuV9WxY'],
+          size: '3355443',
+          modifiedTime: '2024-01-18T09:20:00Z',
+          createdTime: '2024-01-18T09:20:00Z',
+          starred: false,
+          shared: false
+        },
+        {
+          id: '8HiJ9KlM0NoP1QrS2TuV3WxY4ZaB5CdE',
+          name: 'Design_Mockups.zip',
+          mimeType: 'application/zip',
+          parents: ['2BcD3EfG4HiJ5KlM6NoP7QrS8TuV9WxY'],
+          size: '15728640',
+          modifiedTime: '2024-01-16T13:45:00Z',
+          createdTime: '2024-01-16T13:45:00Z',
+          starred: true,
+          shared: false
         }
       ];
       
@@ -197,33 +325,28 @@ export function BrowsePage() {
   };
 
   const searchDriveItems = async (query: string, filters: SearchFilters, providerId: string): Promise<DriveItem[]> => {
-    // TODO: Implement actual search API call
-    // This is a stub that returns filtered mock data
     setIsSearching(true);
     
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Mock search results - replace with actual API response
-      const mockResults: DriveItem[] = [
-        {
-          id: 'search1',
-          name: 'Contract Agreement.docx',
-          type: 'file',
-          size: 1024000,
-          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          modifiedTime: '2024-01-12T14:30:00Z',
-          createdTime: '2024-01-12T14:30:00Z',
-          path: '/Legal/Contract Agreement.docx',
-          starred: false,
-          shared: true,
-          category: 'Legal',
-          tags: ['contract', 'agreement']
-        }
-      ];
+      // Filter items based on search query and filters
+      let filteredItems = allItems.filter(item => {
+        const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase());
+        const matchesFileType = filters.fileType === 'all' || 
+          (filters.fileType === 'folders' && isFolder(item)) ||
+          (filters.fileType === 'documents' && item.mimeType.includes('document')) ||
+          (filters.fileType === 'images' && item.mimeType.includes('image')) ||
+          (filters.fileType === 'videos' && item.mimeType.includes('video'));
+        
+        const matchesStarred = !filters.starred || item.starred;
+        const matchesShared = !filters.shared || item.shared;
+        
+        return matchesQuery && matchesFileType && matchesStarred && matchesShared;
+      });
       
-      return mockResults;
+      return filteredItems;
     } catch (error) {
       console.error('Error searching drive items:', error);
       return [];
@@ -232,12 +355,11 @@ export function BrowsePage() {
     }
   };
 
-  const createFolder = async (name: string, parentPath: string, providerId: string): Promise<boolean> => {
-    // TODO: Implement actual folder creation API call
+  // CRUD operation stubs
+  const createFolder = async (name: string, parentId: string | null, providerId: string): Promise<boolean> => {
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Creating folder "${name}" in "${parentPath}" on ${providerId}`);
+      console.log(`Creating folder "${name}" in parent "${parentId || 'root'}" on ${providerId}`);
       return true;
     } catch (error) {
       console.error('Error creating folder:', error);
@@ -246,9 +368,7 @@ export function BrowsePage() {
   };
 
   const deleteItems = async (itemIds: string[], providerId: string): Promise<boolean> => {
-    // TODO: Implement actual delete API call
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log(`Deleting items ${itemIds.join(', ')} from ${providerId}`);
       return true;
@@ -258,12 +378,10 @@ export function BrowsePage() {
     }
   };
 
-  const moveItems = async (itemIds: string[], targetPath: string, providerId: string): Promise<boolean> => {
-    // TODO: Implement actual move API call
+  const moveItems = async (itemIds: string[], targetFolderId: string, providerId: string): Promise<boolean> => {
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Moving items ${itemIds.join(', ')} to "${targetPath}" on ${providerId}`);
+      console.log(`Moving items ${itemIds.join(', ')} to folder "${targetFolderId}" on ${providerId}`);
       return true;
     } catch (error) {
       console.error('Error moving items:', error);
@@ -271,12 +389,10 @@ export function BrowsePage() {
     }
   };
 
-  const copyItems = async (itemIds: string[], targetPath: string, providerId: string): Promise<boolean> => {
-    // TODO: Implement actual copy API call
+  const copyItems = async (itemIds: string[], targetFolderId: string, providerId: string): Promise<boolean> => {
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(`Copying items ${itemIds.join(', ')} to "${targetPath}" on ${providerId}`);
+      console.log(`Copying items ${itemIds.join(', ')} to folder "${targetFolderId}" on ${providerId}`);
       return true;
     } catch (error) {
       console.error('Error copying items:', error);
@@ -285,11 +401,15 @@ export function BrowsePage() {
   };
 
   const toggleStarred = async (itemId: string, starred: boolean, providerId: string): Promise<boolean> => {
-    // TODO: Implement actual star toggle API call
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 300));
       console.log(`${starred ? 'Starring' : 'Unstarring'} item ${itemId} on ${providerId}`);
+      
+      // Update local state
+      setAllItems(prev => prev.map(item => 
+        item.id === itemId ? { ...item, starred } : item
+      ));
+      
       return true;
     } catch (error) {
       console.error('Error toggling starred status:', error);
@@ -298,9 +418,7 @@ export function BrowsePage() {
   };
 
   const shareItem = async (itemId: string, permissions: string, providerId: string): Promise<string | null> => {
-    // TODO: Implement actual sharing API call
     try {
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       console.log(`Sharing item ${itemId} with ${permissions} on ${providerId}`);
       return 'https://example.com/shared/item';
@@ -315,62 +433,76 @@ export function BrowsePage() {
     if (selectedProvider.connected) {
       loadItems();
     }
-  }, [selectedProvider, currentPath]);
+  }, [selectedProvider]);
+
+  // Update current items when folder changes
+  useEffect(() => {
+    if (folderStructure.size > 0) {
+      const items = folderStructure.get(currentFolderId || 'root') || [];
+      setCurrentItems(items);
+      setBreadcrumbs(buildBreadcrumbs(currentFolderId, allItems));
+    }
+  }, [currentFolderId, folderStructure, allItems]);
 
   const loadItems = async () => {
-    const fetchedItems = await fetchDriveItems(currentPath, selectedProvider.id);
-    setItems(fetchedItems);
+    const fetchedItems = await fetchDriveItems(selectedProvider.id);
+    setAllItems(fetchedItems);
+    
+    const structure = buildFolderStructure(fetchedItems);
+    setFolderStructure(structure);
   };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      loadItems();
+      // Reset to current folder view
+      const items = folderStructure.get(currentFolderId || 'root') || [];
+      setCurrentItems(items);
       return;
     }
     
     const results = await searchDriveItems(searchQuery, searchFilters, selectedProvider.id);
-    setItems(results);
+    setCurrentItems(results);
   };
 
   const handleFolderClick = (folder: DriveItem) => {
-    const newPath = folder.path;
-    setCurrentPath(newPath);
-    
-    const newBreadcrumbs = [...breadcrumbs, {
-      id: folder.id,
-      name: folder.name,
-      path: newPath
-    }];
-    setBreadcrumbs(newBreadcrumbs);
+    setCurrentFolderId(folder.id);
+    setSelectedItems([]);
   };
 
   const handleBreadcrumbClick = (breadcrumb: BreadcrumbItem) => {
-    setCurrentPath(breadcrumb.path);
-    const index = breadcrumbs.findIndex(b => b.id === breadcrumb.id);
-    setBreadcrumbs(breadcrumbs.slice(0, index + 1));
+    const folderId = breadcrumb.id === 'root' ? null : breadcrumb.id;
+    setCurrentFolderId(folderId);
+    setSelectedItems([]);
   };
 
   const getFileIcon = (item: DriveItem) => {
-    if (item.type === 'folder') {
+    if (isFolder(item)) {
       return <FolderOpen className="w-5 h-5 text-blue-500" />;
     }
     
-    const mimeType = item.mimeType?.toLowerCase() || '';
+    const mimeType = item.mimeType.toLowerCase();
     if (mimeType.includes('image')) return <Image className="w-5 h-5 text-purple-500" />;
+    if (mimeType.includes('video')) return <Video className="w-5 h-5 text-red-500" />;
+    if (mimeType.includes('audio')) return <Music className="w-5 h-5 text-green-500" />;
     if (mimeType.includes('pdf')) return <FileText className="w-5 h-5 text-red-500" />;
     if (mimeType.includes('word') || mimeType.includes('document')) return <FileText className="w-5 h-5 text-blue-500" />;
     if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return <FileText className="w-5 h-5 text-green-500" />;
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return <FileText className="w-5 h-5 text-orange-500" />;
+    if (mimeType.includes('zip') || mimeType.includes('archive')) return <Archive className="w-5 h-5 text-yellow-500" />;
+    if (mimeType.includes('text') || mimeType.includes('code')) return <Code className="w-5 h-5 text-gray-500" />;
     return <File className="w-5 h-5 text-gray-500" />;
   };
 
-  const formatFileSize = (bytes?: number) => {
+  const formatFileSize = (bytes?: string) => {
     if (!bytes) return '';
+    const size = parseInt(bytes);
     const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+    const i = Math.floor(Math.log(size) / Math.log(1024));
+    return `${(size / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -583,9 +715,9 @@ export function BrowsePage() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">Any Size</option>
-                    <option value="small">Small (&lt; 1MB)</option>
+                    <option value="small">Small (< 1MB)</option>
                     <option value="medium">Medium (1-10MB)</option>
-                    <option value="large">Large (&gt; 10MB)</option>
+                    <option value="large">Large (> 10MB)</option>
                   </select>
                 </div>
               </div>
@@ -676,7 +808,7 @@ export function BrowsePage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">Loading files...</span>
             </div>
-          ) : items.length === 0 ? (
+          ) : currentItems.length === 0 ? (
             <div className="text-center py-12">
               <FolderOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -691,7 +823,7 @@ export function BrowsePage() {
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-6">
-              {items.map((item) => (
+              {currentItems.map((item) => (
                 <div
                   key={item.id}
                   className={`group relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
@@ -700,10 +832,9 @@ export function BrowsePage() {
                       : 'border-transparent hover:border-gray-300 hover:shadow-md'
                   }`}
                   onClick={() => {
-                    if (item.type === 'folder') {
+                    if (isFolder(item)) {
                       handleFolderClick(item);
                     } else {
-                      // Handle file click
                       console.log('File clicked:', item);
                     }
                   }}
@@ -718,17 +849,9 @@ export function BrowsePage() {
                     </h3>
                     
                     <div className="text-xs text-gray-500">
-                      {item.type === 'file' && item.size && formatFileSize(item.size)}
-                      {item.type === 'folder' && 'Folder'}
+                      {!isFolder(item) && item.size && formatFileSize(item.size)}
+                      {isFolder(item) && 'Folder'}
                     </div>
-                    
-                    {item.category && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {item.category}
-                        </span>
-                      </div>
-                    )}
                   </div>
                   
                   {/* Action buttons */}
@@ -771,10 +894,10 @@ export function BrowsePage() {
                     <th className="px-6 py-3 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedItems.length === items.length && items.length > 0}
+                        checked={selectedItems.length === currentItems.length && currentItems.length > 0}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedItems(items.map(item => item.id));
+                            setSelectedItems(currentItems.map(item => item.id));
                           } else {
                             setSelectedItems([]);
                           }
@@ -792,7 +915,7 @@ export function BrowsePage() {
                       Modified
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
+                      Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -800,7 +923,7 @@ export function BrowsePage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => (
+                  {currentItems.map((item) => (
                     <tr
                       key={item.id}
                       className={`hover:bg-gray-50 transition-colors ${
@@ -827,7 +950,7 @@ export function BrowsePage() {
                           <div className="ml-3">
                             <button
                               onClick={() => {
-                                if (item.type === 'folder') {
+                                if (isFolder(item)) {
                                   handleFolderClick(item);
                                 }
                               }}
@@ -847,19 +970,15 @@ export function BrowsePage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {item.type === 'file' && item.size ? formatFileSize(item.size) : '—'}
+                        {!isFolder(item) && item.size ? formatFileSize(item.size) : '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(item.modifiedTime)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {item.category ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {item.category}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-gray-400">—</span>
-                        )}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {isFolder(item) ? 'Folder' : item.mimeType.split('/')[1]?.toUpperCase() || 'File'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center space-x-2">

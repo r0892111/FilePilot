@@ -40,7 +40,10 @@ import {
   Home,
   Upload as UploadIcon,
 } from "lucide-react";
-import { fetchGoogleDriveFiles } from "../api/googleDrive/driveApi";
+import {
+  fetchGoogleDriveFiles,
+  fetchGoogleDriveFolderFiles,
+} from "../api/googleDrive/driveApi";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -89,7 +92,6 @@ export function BrowsePage() {
   ]);
   const [items, setItems] = useState<DriveItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [allItems, setAllItems] = useState<DriveItem[]>([]);
 
   useEffect(() => {
     const loadGoogleDriveItems = async () => {
@@ -142,52 +144,20 @@ export function BrowsePage() {
     loadGoogleDriveItems();
   }, [currentFolderId]);
 
-  const loadItems = (folderId: string) => {
-    setIsLoading(true);
-
-    // Simulate API delay
-    setTimeout(() => {
-      const folderItems = allItems.filter((item) => {
-        if (folderId === "root") {
-          return (
-            !item.parents ||
-            item.parents.includes("root") ||
-            item.parents.length === 0
-          );
-        }
-        return item.parents && item.parents.includes(folderId);
-      });
-
-      setItems(folderItems);
-      setIsLoading(false);
-    }, 500);
-  };
-
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      loadItems(currentFolderId);
-      return;
-    }
-
     setIsSearching(true);
-
-    // Simulate search delay
-    setTimeout(() => {
-      const searchResults = allItems.filter(
-        (item) =>
-          item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-          item.id !== "root"
-      );
-      setItems(searchResults);
-      setIsSearching(false);
-    }, 800);
   };
 
-  const handleFolderClick = (folder: DriveItem) => {
+  const handleFolderClick = async (folder: DriveItem) => {
     if (folder.type !== "folder") return;
 
     setCurrentFolderId(folder.id);
-
+    setItems(
+      await fetchGoogleDriveFolderFiles(
+        folder.id,
+        (await supabase.auth.getSession()).data?.session?.provider_token || ""
+      )
+    );
     const newBreadcrumbs = [
       ...breadcrumbs,
       {

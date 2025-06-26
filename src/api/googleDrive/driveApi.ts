@@ -20,3 +20,20 @@ export const fetchGoogleDriveFiles = async (accessToken: string) => {
 };
 
 
+
+export const fetchGoogleDriveFolderFiles = async (folderId: string, accessToken: string) => {
+    console.log(folderId, accessToken);
+    const query = encodeURIComponent(`'${folderId}' in parents and trashed = false`);
+    const fields = encodeURIComponent('files(id,name,mimeType,parents)');
+    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=${fields}&pageSize=1000`;
+
+    const res = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+
+    if (!res.ok) throw new Error(`Error fetching files: ${res.statusText}`);
+    const data = await res.json();
+    return data.files;
+}

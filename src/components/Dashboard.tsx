@@ -2,9 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   FileText, 
-  Mail, 
-  Search, 
-  Settings, 
   Upload,
   FolderOpen,
   Activity,
@@ -17,14 +14,20 @@ import {
   Download,
   Eye,
   MoreHorizontal,
-  Calendar,
-  Tag,
   User,
   LogOut,
   Crown,
   Zap,
-  Shield
+  Shield,
+  Settings,
+  Plus,
+  ArrowRight,
+  Mail,
+  Target,
+  Folder,
+  RefreshCw
 } from 'lucide-react';
+import { OnboardingFlow } from './OnboardingFlow';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -66,11 +69,22 @@ interface RecentDocument {
   status: 'processed' | 'processing' | 'failed';
 }
 
+interface SetupStep {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  action: string;
+  icon: React.ComponentType<any>;
+}
+
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalDocuments: 0,
     documentsThisMonth: 0,
@@ -78,6 +92,32 @@ export function Dashboard() {
     storageUsed: '0 MB'
   });
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
+  const [setupSteps, setSetupSteps] = useState<SetupStep[]>([
+    {
+      id: 'email',
+      title: 'Connect Email Accounts',
+      description: 'Add email accounts to monitor for attachments',
+      completed: false,
+      action: 'Connect Email',
+      icon: Mail
+    },
+    {
+      id: 'folder',
+      title: 'Select Organization Folder',
+      description: 'Choose where to organize your documents in Google Drive',
+      completed: false,
+      action: 'Select Folder',
+      icon: FolderOpen
+    },
+    {
+      id: 'sync',
+      title: 'Start Monitoring',
+      description: 'Begin automatic email attachment processing',
+      completed: false,
+      action: 'Start Sync',
+      icon: Zap
+    }
+  ]);
 
   useEffect(() => {
     checkUserAndSubscription();
@@ -111,6 +151,7 @@ export function Dashboard() {
         setSubscription(subscriptionData);
         setIsAuthorized(true);
         loadDashboardData();
+        checkSetupStatus();
       } else {
         setIsAuthorized(false);
       }
@@ -122,9 +163,25 @@ export function Dashboard() {
     }
   };
 
+  const checkSetupStatus = () => {
+    // Simulate checking setup status
+    // In a real app, this would check the database for user's setup progress
+    const emailConnected = Math.random() > 0.7;
+    const folderSelected = Math.random() > 0.5;
+    const syncStarted = emailConnected && folderSelected;
+    
+    setSetupSteps(prev => prev.map(step => ({
+      ...step,
+      completed: step.id === 'email' ? emailConnected : 
+                 step.id === 'folder' ? folderSelected :
+                 step.id === 'sync' ? syncStarted : false
+    })));
+    
+    setSetupComplete(emailConnected && folderSelected && syncStarted);
+  };
+
   const loadDashboardData = async () => {
     // Simulate loading dashboard data
-    // In a real app, this would fetch from your database
     setTimeout(() => {
       setStats({
         totalDocuments: 1247,
@@ -230,6 +287,23 @@ export function Dashboard() {
     }
   };
 
+  const handleSetupAction = (stepId: string) => {
+    if (stepId === 'email' || stepId === 'folder') {
+      setShowOnboarding(true);
+    } else if (stepId === 'sync') {
+      // Start sync process
+      alert('Starting email monitoring...');
+    }
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    setSetupComplete(true);
+    setSetupSteps(prev => prev.map(step => ({ ...step, completed: true })));
+    // Refresh dashboard data
+    loadDashboardData();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -282,6 +356,14 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Onboarding Flow */}
+      {showOnboarding && (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -329,9 +411,80 @@ export function Dashboard() {
             Welcome back, {user ? getUserDisplayName(user) : 'User'}!
           </h1>
           <p className="text-gray-600">
-            Here's what's happening with your document organization today.
+            {setupComplete 
+              ? "Here's what's happening with your document organization today."
+              : "Let's finish setting up your account to start organizing your documents."
+            }
           </p>
         </div>
+
+        {/* Setup Progress (if not complete) */}
+        {!setupComplete && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 mb-8 border border-blue-200">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Complete Your Setup</h2>
+                <p className="text-gray-600">Finish these steps to start organizing your email attachments</p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-blue-600">
+                  {setupSteps.filter(s => s.completed).length}/{setupSteps.length}
+                </div>
+                <div className="text-sm text-gray-500">Steps completed</div>
+              </div>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-6">
+              {setupSteps.map((step, index) => {
+                const StepIcon = step.icon;
+                return (
+                  <div
+                    key={step.id}
+                    className={`bg-white rounded-xl p-6 border-2 transition-all duration-300 ${
+                      step.completed 
+                        ? 'border-green-200 bg-green-50' 
+                        : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                        step.completed ? 'bg-green-100' : 'bg-blue-100'
+                      }`}>
+                        {step.completed ? (
+                          <CheckCircle className="w-6 h-6 text-green-600" />
+                        ) : (
+                          <StepIcon className="w-6 h-6 text-blue-600" />
+                        )}
+                      </div>
+                      <div className="text-sm font-medium text-gray-500">
+                        Step {index + 1}
+                      </div>
+                    </div>
+                    
+                    <h3 className="font-semibold text-gray-900 mb-2">{step.title}</h3>
+                    <p className="text-sm text-gray-600 mb-4">{step.description}</p>
+                    
+                    {!step.completed && (
+                      <button
+                        onClick={() => handleSetupAction(step.id)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        {step.action}
+                      </button>
+                    )}
+                    
+                    {step.completed && (
+                      <div className="flex items-center text-green-600 text-sm font-medium">
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Completed
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -366,7 +519,7 @@ export function Dashboard() {
                 <p className="text-3xl font-bold text-gray-900">{stats.categoriesCreated}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Tag className="w-6 h-6 text-purple-600" />
+                <Target className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -420,132 +573,139 @@ export function Dashboard() {
 
           <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Smart Search</h3>
-              <Search className="w-6 h-6" />
+              <h3 className="text-lg font-semibold">Setup Assistant</h3>
+              <Settings className="w-6 h-6" />
             </div>
             <p className="text-purple-100 mb-4">
-              Find any document instantly using AI-powered search with natural language queries.
+              {setupComplete 
+                ? "Manage your email accounts and organization settings."
+                : "Complete your setup to start organizing email attachments."
+              }
             </p>
             <button 
-              onClick={() => window.location.href = '/browse'}
+              onClick={() => setShowOnboarding(true)}
               className="bg-white text-purple-600 px-4 py-2 rounded-lg font-medium hover:bg-purple-50 transition-colors"
             >
-              Search Now
+              {setupComplete ? 'Manage Settings' : 'Complete Setup'}
             </button>
           </div>
         </div>
 
         {/* Recent Documents */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Recent Documents</h2>
-              <div className="flex items-center space-x-2">
-                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  <Filter className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  <Download className="w-4 h-4" />
-                </button>
+        {setupComplete && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Recent Documents</h2>
+                <div className="flex items-center space-x-2">
+                  <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                    <Filter className="w-4 h-4" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Document
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Size
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentDocuments.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {getFileTypeIcon(doc.type)}
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">{doc.name}</div>
-                          <div className="text-sm text-gray-500">{doc.type}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {doc.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doc.size}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doc.date}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {getStatusIcon(doc.status)}
-                        <span className="ml-2 text-sm text-gray-600 capitalize">
-                          {doc.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center space-x-2">
-                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Document
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Size
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {recentDocuments.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getFileTypeIcon(doc.type)}
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">{doc.name}</div>
+                            <div className="text-sm text-gray-500">{doc.type}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {doc.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {doc.size}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {doc.date}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getStatusIcon(doc.status)}
+                          <span className="ml-2 text-sm text-gray-600 capitalize">
+                            {doc.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex items-center space-x-2">
+                          <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* AI Processing Status */}
-        <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <Zap className="w-6 h-6 text-blue-600" />
+        {setupComplete && (
+          <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                  <Zap className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">AI Processing Active</h3>
+                  <p className="text-gray-600">
+                    FilePilot is continuously monitoring your email for new attachments to organize.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">AI Processing Active</h3>
-                <p className="text-gray-600">
-                  FilePilot is continuously monitoring your email for new attachments to organize.
-                </p>
+              <div className="flex items-center text-green-600">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-sm font-medium">Live</span>
               </div>
-            </div>
-            <div className="flex items-center text-green-600">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-              <span className="text-sm font-medium">Live</span>
             </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

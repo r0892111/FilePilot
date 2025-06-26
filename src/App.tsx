@@ -21,6 +21,7 @@ import {
 import { stripeProducts } from './stripe-config';
 import { SubscriptionStatus } from './components/SubscriptionStatus';
 import { IntegrationSlider } from './components/IntegrationSlider';
+import { OnboardingFlow } from './components/OnboardingFlow';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -50,6 +51,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -121,49 +123,20 @@ function App() {
     }
   };
 
-  const handlePlanSelection = async (priceId: string) => {
+  const handleGetStarted = () => {
     if (!user) {
-      // Redirect to login if not authenticated
-      window.location.href = '/login';
+      // Redirect to signup if not authenticated
+      window.location.href = '/signup';
       return;
     }
 
-    try {
-      setIsLoading(true);
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          price_id: priceId,
-          success_url: `${window.location.origin}/success`,
-          cancel_url: `${window.location.origin}/#pricing`,
-          mode: 'subscription'
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error('Checkout error:', data.error);
-        alert('Failed to create checkout session. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
-      alert('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+    // Check if user has active subscription
+    if (subscription && subscription.subscription_status === 'active') {
+      // User has subscription, go to dashboard
+      window.location.href = '/dashboard';
+    } else {
+      // User needs to subscribe, show onboarding flow
+      setShowOnboarding(true);
     }
   };
 
@@ -195,6 +168,17 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Onboarding Flow */}
+      {showOnboarding && (
+        <OnboardingFlow
+          onComplete={() => {
+            setShowOnboarding(false);
+            window.location.href = '/dashboard';
+          }}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
         <div className="absolute inset-0 opacity-20" style={{
@@ -281,24 +265,22 @@ function App() {
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                {hasActiveSubscription ? (
-                  <a
-                    href="/dashboard"
-                    className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
-                  >
-                    <LayoutDashboard className="w-5 h-5 mr-2" />
-                    Go to Dashboard
-                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </a>
-                ) : (
-                  <button 
-                    onClick={scrollToPricing}
-                    className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
-                  >
-                    Get Started Now
-                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                )}
+                <button 
+                  onClick={handleGetStarted}
+                  className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
+                >
+                  {hasActiveSubscription ? (
+                    <>
+                      <LayoutDashboard className="w-5 h-5 mr-2" />
+                      Go to Dashboard
+                    </>
+                  ) : (
+                    <>
+                      Get Started Now
+                    </>
+                  )}
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </button>
                 
                 <button className="group border-2 border-gray-600 hover:border-gray-500 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5">
                   <Play className="w-5 h-5 mr-2" />
@@ -406,22 +388,22 @@ function App() {
             {[
               {
                 step: "01",
-                title: "Connect your Gmail",
-                description: "One-time secure authentication via Google OAuth. No passwords, fully secured.",
+                title: "Choose Your Plan",
+                description: "Select the subscription plan that fits your needs. Secure payment with Stripe.",
                 icon: Mail,
                 color: "blue"
               },
               {
                 step: "02", 
-                title: "AI analyzes",
-                description: "Automatic scanning and categorization of attachments. Our AI recognizes document types and content.",
+                title: "Connect Email & Drive",
+                description: "Link your email accounts and select your Google Drive organization folder.",
                 icon: Zap,
                 color: "green"
               },
               {
                 step: "03",
-                title: "Perfectly organized",
-                description: "Documents neatly sorted in your Drive with smart folder structure and metadata.",
+                title: "AI Organizes Everything",
+                description: "Our AI automatically categorizes and organizes your email attachments in real-time.",
                 icon: FileText,
                 color: "purple"
               }
@@ -560,15 +542,14 @@ function App() {
                 </ul>
                 
                 <button 
-                  onClick={() => handlePlanSelection(product.priceId)}
-                  disabled={isLoading}
+                  onClick={handleGetStarted}
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors duration-300 mt-auto ${
                     product.name === 'Yearly Plan'
                       ? 'bg-white hover:bg-gray-100 text-blue-600'
                       : 'bg-gray-900 hover:bg-gray-800 text-white'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  }`}
                 >
-                  {isLoading ? 'Loading...' : 'Get Started'}
+                  Get Started
                 </button>
               </div>
             ))}

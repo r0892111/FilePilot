@@ -17,7 +17,9 @@ import {
   Settings,
   Eye,
   EyeOff,
-  X
+  X,
+  Info,
+  ExternalLink
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -28,7 +30,7 @@ const supabase = createClient(
 interface EmailAccount {
   id: string;
   email: string;
-  provider: 'gmail' | 'outlook';
+  provider: 'gmail';
   connected: boolean;
   lastSync?: string;
   status: 'active' | 'error' | 'syncing';
@@ -43,11 +45,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const [user, setUser] = useState<any>(null);
   const [emailAccounts, setEmailAccounts] = useState<EmailAccount[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [connectingProvider, setConnectingProvider] = useState<string>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showAddEmailModal, setShowAddEmailModal] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<'gmail' | 'outlook'>('gmail');
-  const [emailInput, setEmailInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -81,6 +79,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         .from('user_email_accounts')
         .select('*')
         .eq('user_id', user.id)
+        .eq('provider', 'gmail')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -91,7 +90,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       const accounts: EmailAccount[] = (data || []).map(account => ({
         id: account.id.toString(),
         email: account.email,
-        provider: account.provider as 'gmail' | 'outlook',
+        provider: 'gmail',
         connected: true,
         lastSync: account.last_sync,
         status: account.status as 'active' | 'error' | 'syncing'
@@ -103,69 +102,45 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
   };
 
-  const handleAddEmailClick = (provider: 'gmail' | 'outlook') => {
-    setSelectedProvider(provider);
-    setEmailInput('');
-    setShowAddEmailModal(true);
-  };
-
-  const handleAddEmail = async () => {
-    if (!emailInput.trim() || !user) return;
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailInput)) {
-      alert('Please enter a valid email address');
-      return;
-    }
-
-    // Check if email already exists
-    if (emailAccounts.some(account => account.email === emailInput)) {
-      alert('This email account is already connected');
-      return;
-    }
+  const handleConnectGmail = async () => {
+    if (!user) return;
 
     setIsConnecting(true);
-    setConnectingProvider(selectedProvider);
 
     try {
-      // Call Supabase function to add email account
-      const { data, error } = await supabase.rpc('add_user_email_account', {
-        user_uuid: user.id,
-        email_address: emailInput.trim(),
-        email_provider: selectedProvider
+      console.log('Initiating Gmail OAuth for email monitoring...');
+      
+      // Get the current origin for redirect
+      const redirectTo = `${window.location.origin}/steps`;
+      
+      console.log('Redirect URL:', redirectTo);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectTo,
+          scopes: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email",
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
       });
 
+      console.log('OAuth response:', data);
+
       if (error) {
-        console.error('Error adding email account:', error);
-        if (error.message.includes('already exists')) {
-          alert('This email account is already connected to your account');
-        } else {
-          alert('Failed to add email account. Please try again.');
-        }
-        return;
+        console.error('OAuth error:', error);
+        alert(`Gmail authentication failed: ${error.message}`);
+      } else {
+        console.log('OAuth initiated successfully');
+        // The redirect will happen automatically
       }
-
-      // Add to local state
-      const newAccount: EmailAccount = {
-        id: data.id.toString(),
-        email: data.email,
-        provider: data.provider as 'gmail' | 'outlook',
-        connected: true,
-        lastSync: data.connected_at,
-        status: 'active'
-      };
-
-      setEmailAccounts(prev => [newAccount, ...prev]);
-      setShowAddEmailModal(false);
-      setEmailInput('');
-
-    } catch (error) {
-      console.error('Error adding email account:', error);
-      alert('An error occurred while adding the email account. Please try again.');
+    } catch (error: any) {
+      console.error('Unexpected OAuth error:', error);
+      alert(`Failed to authenticate with Gmail: ${error.message || 'Unknown error'}`);
     } finally {
       setIsConnecting(false);
-      setConnectingProvider('');
     }
   };
 
@@ -243,7 +218,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
-      alert('Please connect at least one email account to continue.');
+      alert('Please connect at least one Gmail account to continue.');
       return;
     }
 
@@ -268,27 +243,12 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
   };
 
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case 'gmail':
-        return (
-          <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-            <Mail className="w-4 h-4 text-red-600" />
-          </div>
-        );
-      case 'outlook':
-        return (
-          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-            <Mail className="w-4 h-4 text-blue-600" />
-          </div>
-        );
-      default:
-        return (
-          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-            <Mail className="w-4 h-4 text-gray-600" />
-          </div>
-        );
-    }
+  const getProviderIcon = () => {
+    return (
+      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+        <Mail className="w-4 h-4 text-red-600" />
+      </div>
+    );
   };
 
   const getStatusIcon = (status: string) => {
@@ -317,96 +277,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
-      {/* Add Email Modal */}
-      {showAddEmailModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Add Email Account</h3>
-              <button
-                onClick={() => setShowAddEmailModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Provider
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setSelectedProvider('gmail')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      selectedProvider === 'gmail'
-                        ? 'border-red-300 bg-red-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      {getProviderIcon('gmail')}
-                      <span className="ml-2 font-medium">Gmail</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setSelectedProvider('outlook')}
-                    className={`p-3 rounded-lg border-2 transition-all ${
-                      selectedProvider === 'outlook'
-                        ? 'border-blue-300 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      {getProviderIcon('outlook')}
-                      <span className="ml-2 font-medium">Outlook</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder={`Enter your ${selectedProvider} email address`}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  onKeyPress={(e) => e.key === 'Enter' && handleAddEmail()}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setShowAddEmailModal(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddEmail}
-                disabled={!emailInput.trim() || isConnecting}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
-              >
-                {isConnecting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
-                    Adding...
-                  </>
-                ) : (
-                  'Add Email'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -435,11 +305,11 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
           </div>
           
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Connect Your Email Accounts
+            Connect Your Gmail Account
           </h1>
           
           <p className="text-xl text-blue-100 mb-6">
-            Add the email accounts you want FilePilot to monitor for attachments
+            Connect your Gmail account to monitor email attachments for automatic organization
           </p>
 
           <div className="inline-flex items-center px-4 py-2 bg-blue-500/20 rounded-full border border-blue-400/30 text-blue-200 text-sm">
@@ -456,7 +326,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               <div className="bg-white rounded-2xl p-8 shadow-xl">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">
-                    Connected Accounts ({emailAccounts.length})
+                    Connected Gmail Accounts ({emailAccounts.length})
                   </h2>
                   <button
                     onClick={() => setShowAdvanced(!showAdvanced)}
@@ -471,7 +341,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                   {emailAccounts.map((account) => (
                     <div key={account.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
                       <div className="flex items-center">
-                        {getProviderIcon(account.provider)}
+                        {getProviderIcon()}
                         <div className="ml-4">
                           <div className="font-medium text-gray-900">{account.email}</div>
                           <div className="flex items-center text-sm text-gray-500">
@@ -515,44 +385,75 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               </div>
             )}
 
-            {/* Add New Account */}
+            {/* Gmail Connection */}
             <div className="bg-white rounded-2xl p-8 shadow-xl">
               <div className="flex items-center mb-6">
                 <Plus className="w-6 h-6 text-blue-600 mr-3" />
-                <h2 className="text-xl font-bold text-gray-900">Add Email Account</h2>
+                <h2 className="text-xl font-bold text-gray-900">Connect Gmail Account</h2>
+              </div>
+
+              {/* Important Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-blue-900 mb-2">Important: Email Account Selection</h3>
+                    <p className="text-sm text-blue-800 mb-3">
+                      When you click "Connect Gmail", you'll be redirected to Google's authentication page. 
+                      <strong> Please carefully select the Gmail account you want FilePilot to monitor for attachments.</strong>
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      The email account you choose during the Google OAuth flow will be the one that FilePilot analyzes for email attachments.
+                    </p>
+                  </div>
+                </div>
               </div>
               
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  { provider: 'gmail' as const, name: 'Gmail', color: 'red', description: 'Google Workspace & Gmail' },
-                  { provider: 'outlook' as const, name: 'Outlook', color: 'blue', description: 'Microsoft 365 & Outlook.com' }
-                ].map((email) => (
-                  <button
-                    key={email.provider}
-                    onClick={() => handleAddEmailClick(email.provider)}
-                    disabled={isConnecting}
-                    className={`p-6 rounded-xl border-2 border-gray-200 hover:border-${email.color}-300 hover:bg-${email.color}-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left`}
-                  >
-                    <div className="flex items-center mb-3">
-                      {getProviderIcon(email.provider)}
-                      <div className="ml-3">
-                        <div className="font-semibold text-gray-900">{email.name}</div>
-                        <div className="text-sm text-gray-500">{email.description}</div>
-                      </div>
+              <div className="max-w-md">
+                <button
+                  onClick={handleConnectGmail}
+                  disabled={isConnecting}
+                  className="w-full p-6 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                >
+                  <div className="flex items-center mb-3">
+                    {getProviderIcon()}
+                    <div className="ml-3">
+                      <div className="font-semibold text-gray-900">Gmail</div>
+                      <div className="text-sm text-gray-500">Google Workspace & Gmail</div>
                     </div>
-                    
-                    <div className="text-sm text-gray-600">
-                      Click to add account
+                  </div>
+                  
+                  {isConnecting ? (
+                    <div className="flex items-center text-blue-600 text-sm">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Connecting to Gmail...
                     </div>
-                  </button>
-                ))}
+                  ) : (
+                    <div className="flex items-center text-gray-600 text-sm">
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Click to connect with Google OAuth
+                    </div>
+                  )}
+                </button>
               </div>
+              
+              {isConnecting && (
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center text-blue-800">
+                    <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                    <div>
+                      <div className="font-medium">Connecting to Gmail...</div>
+                      <div className="text-sm text-blue-600">You'll be redirected to Google to authorize FilePilot</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Sidebar - Aligned with main content */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Features */}
+            {/* What We Monitor */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Zap className="w-6 h-6 text-yellow-400 mr-3" />
@@ -579,7 +480,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               </ul>
             </div>
 
-            {/* Security */}
+            {/* Privacy & Security */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Shield className="w-6 h-6 text-green-400 mr-3" />
@@ -604,6 +505,24 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                   Revoke access anytime
                 </li>
               </ul>
+            </div>
+
+            {/* OAuth Flow Info */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
+              <div className="flex items-center mb-4">
+                <ExternalLink className="w-6 h-6 text-blue-400 mr-3" />
+                <h3 className="text-lg font-semibold text-white">OAuth Flow</h3>
+              </div>
+              
+              <div className="space-y-2 text-sm text-blue-100">
+                <div>1. Click "Connect Gmail"</div>
+                <div>2. Choose your Gmail account</div>
+                <div>3. Grant attachment permissions</div>
+                <div>4. Return to FilePilot setup</div>
+                <div className="text-xs text-blue-200 mt-3">
+                  The account you select will be monitored for attachments
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -65,7 +65,6 @@ interface OnboardingStepsPageProps {
 }
 
 interface EditableSettings {
-  autoOrganize: boolean;
   selectedFolder: string;
   duplicateHandling: 'skip' | 'rename' | 'replace';
   connectedEmails: string[];
@@ -94,7 +93,6 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   const [isSaving, setIsSaving] = useState(false);
   const [settingsJustSaved, setSettingsJustSaved] = useState(false);
   const [settings, setSettings] = useState<EditableSettings>({
-    autoOrganize: true,
     selectedFolder: '/FilePilot/Documents',
     duplicateHandling: 'rename',
     connectedEmails: ['user@gmail.com', 'work@outlook.com'],
@@ -192,7 +190,6 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     try {
       // Simulate loading user preferences
       const mockSettings: EditableSettings = {
-        autoOrganize: true,
         selectedFolder: '/FilePilot/Documents',
         duplicateHandling: 'rename',
         connectedEmails: ['user@gmail.com', 'work@outlook.com'],
@@ -530,22 +527,6 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Manage Settings</h2>
             
             <div className="space-y-8">
-              {/* Auto-organize Setting */}
-              <div className="border-b border-gray-200 pb-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Auto-organize</h3>
-                    <p className="text-sm text-gray-600">Automatically organize new email attachments</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.autoOrganize}
-                    onChange={(e) => setSettings({...settings, autoOrganize: e.target.checked})}
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
               {/* Selected Folder */}
               <div className="border-b border-gray-200 pb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Organization Folder</h3>

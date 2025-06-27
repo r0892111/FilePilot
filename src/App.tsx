@@ -70,8 +70,6 @@ function App() {
           user_metadata: session.user.user_metadata,
         });
         checkSubscription(session.user.id);
-        // Show onboarding modal immediately after sign in
-        setShowOnboarding(true);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setSubscription(null);
@@ -114,6 +112,11 @@ function App() {
         console.error("Error fetching subscription:", error);
       } else {
         setSubscription(subscriptionData);
+        
+        // If user has active subscription, redirect to steps page
+        if (subscriptionData && subscriptionData.subscription_status === 'active') {
+          window.location.href = '/steps';
+        }
       }
     } catch (error) {
       console.error("Error checking subscription:", error);
@@ -142,8 +145,8 @@ function App() {
 
     // Check if user has active subscription
     if (subscription && subscription.subscription_status === "active") {
-      // User has subscription, go to dashboard
-      window.location.href = "/dashboard";
+      // User has subscription, go to steps page
+      window.location.href = "/steps";
     } else {
       // User needs to subscribe, show onboarding flow
       setShowOnboarding(true);

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Crown, Clock, AlertCircle, CheckCircle } from 'lucide-react';
-import { getProductByPriceId } from '../stripe-config';
+import React, { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Crown, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { getProductByPriceId } from "../stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -16,7 +16,9 @@ interface SubscriptionData {
 }
 
 export function SubscriptionStatus() {
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,25 +27,30 @@ export function SubscriptionStatus() {
 
   const fetchSubscription = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session) {
         setIsLoading(false);
         return;
       }
 
       const { data, error } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
+        .from("stripe_user_subscriptions")
+        .select(
+          "subscription_status, price_id, current_period_end, cancel_at_period_end"
+        )
         .maybeSingle();
+      console.log("Fetched subscription data:", data);
 
       if (error) {
-        console.error('Error fetching subscription:', error);
+        console.error("Error fetching subscription:", error);
       } else {
         setSubscription(data);
       }
     } catch (error) {
-      console.error('Error fetching subscription:', error);
+      console.error("Error fetching subscription:", error);
     } finally {
       setIsLoading(false);
     }
@@ -60,26 +67,32 @@ export function SubscriptionStatus() {
     );
   }
 
-  if (!subscription || subscription.subscription_status === 'not_started') {
+  if (!subscription || subscription.subscription_status === "not_started") {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-center">
           <AlertCircle className="w-5 h-5 text-yellow-600 mr-3" />
           <div>
-            <p className="text-sm font-medium text-yellow-800">No active subscription</p>
-            <p className="text-xs text-yellow-600">Choose a plan to get started</p>
+            <p className="text-sm font-medium text-yellow-800">
+              No active subscription
+            </p>
+            <p className="text-xs text-yellow-600">
+              Choose a plan to get started
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  const product = subscription.price_id ? getProductByPriceId(subscription.price_id) : null;
-  const isActive = subscription.subscription_status === 'active';
-  const isPastDue = subscription.subscription_status === 'past_due';
-  const isCanceled = subscription.subscription_status === 'canceled';
-  
-  const periodEndDate = subscription.current_period_end 
+  const product = subscription.price_id
+    ? getProductByPriceId(subscription.price_id)
+    : null;
+  const isActive = subscription.subscription_status === "active";
+  const isPastDue = subscription.subscription_status === "past_due";
+  const isCanceled = subscription.subscription_status === "canceled";
+
+  const periodEndDate = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toLocaleDateString()
     : null;
 
@@ -91,18 +104,23 @@ export function SubscriptionStatus() {
   };
 
   const getStatusColor = () => {
-    if (isActive) return 'bg-green-50 border-green-200';
-    if (isPastDue) return 'bg-red-50 border-red-200';
-    if (isCanceled) return 'bg-gray-50 border-gray-200';
-    return 'bg-blue-50 border-blue-200';
+    if (isActive) return "bg-green-50 border-green-200";
+    if (isPastDue) return "bg-red-50 border-red-200";
+    if (isCanceled) return "bg-gray-50 border-gray-200";
+    return "bg-blue-50 border-blue-200";
   };
 
   const getStatusText = () => {
     if (isActive && subscription.cancel_at_period_end) {
-      return 'Active (Canceling)';
+      return "Active (Canceling)";
     }
-    return subscription.subscription_status.charAt(0).toUpperCase() + 
-           subscription.subscription_status.slice(1).replace('_', ' ');
+    if (subscription.subscription_status!) {
+      return (
+        subscription.subscription_status.charAt(0).toUpperCase() +
+        subscription.subscription_status.slice(1).replace("_", " ")
+      );
+    }
+    return "logged in again please.";
   };
 
   return (
@@ -112,18 +130,17 @@ export function SubscriptionStatus() {
           {getStatusIcon()}
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">
-              {product ? product.name : 'Subscription'}
+              {product ? product.name : "Subscription"}
             </p>
-            <p className="text-xs text-gray-600">
-              Status: {getStatusText()}
-            </p>
+            <p className="text-xs text-gray-600">Status: {getStatusText()}</p>
           </div>
         </div>
-        
+
         {periodEndDate && (
           <div className="text-right">
             <p className="text-xs text-gray-600">
-              {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}: {periodEndDate}
+              {subscription.cancel_at_period_end ? "Ends" : "Renews"}:{" "}
+              {periodEndDate}
             </p>
           </div>
         )}

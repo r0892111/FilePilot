@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { 
-  FileText, 
-  Mail, 
-  Search, 
-  Shield, 
-  Zap, 
-  ArrowRight, 
-  Check, 
+import React, { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import {
+  FileText,
+  Mail,
+  Search,
+  Shield,
+  Zap,
+  ArrowRight,
+  Check,
   Star,
   Users,
   Clock,
@@ -16,13 +16,13 @@ import {
   Play,
   LogOut,
   User,
-  LayoutDashboard
-} from 'lucide-react';
-import { stripeProducts } from './stripe-config';
-import { SubscriptionStatus } from './components/SubscriptionStatus';
-import { IntegrationSlider } from './components/IntegrationSlider';
-import { OnboardingFlow } from './components/OnboardingFlow';
-import { OnboardingStepsPage } from './components/OnboardingStepsPage';
+  LayoutDashboard,
+} from "lucide-react";
+import { stripeProducts } from "./stripe-config";
+import { SubscriptionStatus } from "./components/SubscriptionStatus";
+import { IntegrationSlider } from "./components/IntegrationSlider";
+import { OnboardingFlow } from "./components/OnboardingFlow";
+import { OnboardingStepsPage } from "./components/OnboardingStepsPage";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -50,7 +50,9 @@ interface SubscriptionData {
 function App() {
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showStepsPage, setShowStepsPage] = useState(false);
@@ -58,17 +60,19 @@ function App() {
   useEffect(() => {
     setIsVisible(true);
     checkUser();
-    
+
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
         setUser({
           id: session.user.id,
-          email: session.user.email || '',
-          user_metadata: session.user.user_metadata
+          email: session.user.email || "",
+          user_metadata: session.user.user_metadata,
         });
         checkSubscription(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === "SIGNED_OUT") {
         setUser(null);
         setSubscription(null);
       }
@@ -79,17 +83,19 @@ function App() {
 
   const checkUser = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session?.user) {
         setUser({
           id: session.user.id,
-          email: session.user.email || '',
-          user_metadata: session.user.user_metadata
+          email: session.user.email || "",
+          user_metadata: session.user.user_metadata,
         });
         await checkSubscription(session.user.id);
       }
     } catch (error) {
-      console.error('Error checking user:', error);
+      console.error("Error checking user:", error);
     } finally {
       setIsLoading(false);
     }
@@ -98,17 +104,19 @@ function App() {
   const checkSubscription = async (userId: string) => {
     try {
       const { data: subscriptionData, error } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
+        .from("stripe_user_subscriptions")
+        .select(
+          "subscription_status, price_id, current_period_end, cancel_at_period_end"
+        )
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching subscription:', error);
+        console.error("Error fetching subscription:", error);
       } else {
         setSubscription(subscriptionData);
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      console.error("Error checking subscription:", error);
     }
   };
 
@@ -119,23 +127,23 @@ function App() {
   };
 
   const scrollToPricing = () => {
-    const pricingSection = document.getElementById('pricing');
+    const pricingSection = document.getElementById("pricing");
     if (pricingSection) {
-      pricingSection.scrollIntoView({ behavior: 'smooth' });
+      pricingSection.scrollIntoView({ behavior: "smooth" });
     }
   };
 
   const handleGetStarted = () => {
     if (!user) {
       // Redirect to signup if not authenticated
-      window.location.href = '/signup';
+      window.location.href = "/signup";
       return;
     }
 
     // Check if user has active subscription
-    if (subscription && subscription.subscription_status === 'active') {
+    if (subscription && subscription.subscription_status === "active") {
       // User has subscription, go to dashboard
-      window.location.href = '/dashboard';
+      window.location.href = "/dashboard";
     } else {
       // User needs to subscribe, show onboarding flow
       setShowOnboarding(true);
@@ -151,14 +159,17 @@ function App() {
       return user.user_metadata.name;
     }
     if (user.user_metadata?.first_name) {
-      const lastName = user.user_metadata.last_name ? ` ${user.user_metadata.last_name}` : '';
+      const lastName = user.user_metadata.last_name
+        ? ` ${user.user_metadata.last_name}`
+        : "";
       return `${user.user_metadata.first_name}${lastName}`;
     }
     // Fallback to email username (part before @)
-    return user.email.split('@')[0];
+    return user.email.split("@")[0];
   };
 
-  const hasActiveSubscription = subscription && subscription.subscription_status === 'active';
+  const hasActiveSubscription =
+    subscription && subscription.subscription_status === "active";
 
   if (isLoading) {
     return (
@@ -186,7 +197,7 @@ function App() {
         <OnboardingStepsPage
           onComplete={() => {
             setShowStepsPage(false);
-            window.location.href = '/dashboard';
+            window.location.href = "/dashboard";
           }}
           onClose={() => setShowStepsPage(false)}
           isSubscribed={hasActiveSubscription || false}
@@ -196,10 +207,13 @@ function App() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
-        
+        <div
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='7' cy='7' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        ></div>
+
         {/* Header */}
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
           <div className="flex items-center justify-between">
@@ -207,7 +221,7 @@ function App() {
               <FileText className="w-8 h-8 text-white mr-3" />
               <span className="text-xl font-bold text-white">FilePilot</span>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {user ? (
                 <>
@@ -258,29 +272,36 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-24 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <div
+              className={`transition-all duration-1000 ${
+                isVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-8"
+              }`}
+            >
               <div className="inline-flex items-center px-4 py-2 bg-blue-500/10 rounded-full border border-blue-500/20 text-blue-300 text-sm font-medium mb-6">
                 <Zap className="w-4 h-4 mr-2" />
                 Now available worldwide
               </div>
-              
+
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-                Your digital copilot for{' '}
+                Your digital copilot for{" "}
                 <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   smart document management
                 </span>
               </h1>
-              
+
               <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                FilePilot automatically scans and organizes your email attachments in Google Drive with AI precision. 
-                Never search for important documents again.
+                FilePilot automatically scans and organizes your email
+                attachments in Google Drive with AI precision. Never search for
+                important documents again.
               </p>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
-                <button 
+                <button
                   onClick={handleGetStarted}
                   className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
                 >
@@ -290,21 +311,25 @@ function App() {
                       Go to Dashboard
                     </>
                   ) : (
-                    <>
-                      Get Started Now
-                    </>
+                    <>Get Started Now</>
                   )}
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
-                
+
                 <button className="group border-2 border-gray-600 hover:border-gray-500 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5">
                   <Play className="w-5 h-5 mr-2" />
                   Watch demo
                 </button>
               </div>
             </div>
-            
-            <div className={`transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+
+            <div
+              className={`transition-all duration-1000 delay-300 ${
+                isVisible
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-8"
+              }`}
+            >
               <div className="relative">
                 <div className="bg-white rounded-2xl shadow-2xl p-6 transform rotate-3 hover:rotate-0 transition-transform duration-500">
                   <div className="flex items-center mb-4">
@@ -313,39 +338,53 @@ function App() {
                       <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     </div>
-                    <div className="flex-1 text-center text-sm font-medium text-gray-600">FilePilot Dashboard</div>
+                    <div className="flex-1 text-center text-sm font-medium text-gray-600">
+                      FilePilot Dashboard
+                    </div>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-center p-3 bg-blue-50 rounded-lg">
                       <FileText className="w-5 h-5 text-blue-600 mr-3" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">Contract_Q4_2024.pdf</div>
-                        <div className="text-xs text-gray-500">Automatically categorized as Contract</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          Contract_Q4_2024.pdf
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Automatically categorized as Contract
+                        </div>
                       </div>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     </div>
-                    
+
                     <div className="flex items-center p-3 bg-green-50 rounded-lg">
                       <Mail className="w-5 h-5 text-green-600 mr-3" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">Invoice_12345.pdf</div>
-                        <div className="text-xs text-gray-500">Saved to /Finance/2024</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          Invoice_12345.pdf
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Saved to /Finance/2024
+                        </div>
                       </div>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     </div>
-                    
+
                     <div className="flex items-center p-3 bg-purple-50 rounded-lg">
                       <FileText className="w-5 h-5 text-purple-600 mr-3" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">Presentation_Meeting.pptx</div>
-                        <div className="text-xs text-gray-500">Moved to /Projects/Q4</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          Presentation_Meeting.pptx
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Moved to /Projects/Q4
+                        </div>
                       </div>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="absolute -top-4 -right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold animate-pulse">
                   Live AI Processing
                 </div>
@@ -354,39 +393,6 @@ function App() {
           </div>
         </div>
       </section>
-
-      {/* Integration Slider Section */}
-      <section className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-              Seamlessly integrates with your favorite tools
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Connect FilePilot with the platforms you already use. Our growing ecosystem of integrations 
-              ensures your workflow stays uninterrupted.
-            </p>
-          </div>
-          
-          <IntegrationSlider />
-          
-          <div className="flex justify-center items-center mt-12 space-x-8 text-sm text-gray-600">
-            <div className="flex items-center">
-              <Users className="w-4 h-4 mr-2 text-blue-600" />
-              <span className="font-semibold">1000+</span> users
-            </div>
-            <div className="flex items-center">
-              <FileText className="w-4 h-4 mr-2 text-blue-600" />
-              <span className="font-semibold">100,000+</span> documents processed
-            </div>
-            <div className="flex items-center">
-              <Star className="w-4 h-4 mr-2 text-yellow-500" />
-              <span className="font-semibold">4.9/5</span> satisfaction
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* How It Works */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -395,45 +401,57 @@ function App() {
               How FilePilot works
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              In just three simple steps, transform your chaotic email attachments into an organized archive
+              In just three simple steps, transform your chaotic email
+              attachments into an organized archive
             </p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 step: "01",
                 title: "Choose Your Plan",
-                description: "Select the subscription plan that fits your needs. Secure payment with Stripe.",
+                description:
+                  "Select the subscription plan that fits your needs. Secure payment with Stripe.",
                 icon: Mail,
-                color: "blue"
+                color: "blue",
               },
               {
-                step: "02", 
+                step: "02",
                 title: "Connect Email & Drive",
-                description: "Link your email accounts and select your Google Drive organization folder.",
+                description:
+                  "Link your email accounts and select your Google Drive organization folder.",
                 icon: Zap,
-                color: "green"
+                color: "green",
               },
               {
                 step: "03",
                 title: "AI Organizes Everything",
-                description: "Our AI automatically categorizes and organizes your email attachments in real-time.",
+                description:
+                  "Our AI automatically categorizes and organizes your email attachments in real-time.",
                 icon: FileText,
-                color: "purple"
-              }
+                color: "purple",
+              },
             ].map((item, index) => (
               <div key={index} className="relative group">
                 <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
-                  <div className={`inline-flex items-center justify-center w-16 h-16 bg-${item.color}-100 rounded-xl mb-6`}>
+                  <div
+                    className={`inline-flex items-center justify-center w-16 h-16 bg-${item.color}-100 rounded-xl mb-6`}
+                  >
                     <item.icon className={`w-8 h-8 text-${item.color}-600`} />
                   </div>
-                  
-                  <div className="text-sm font-semibold text-gray-400 mb-2">STEP {item.step}</div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">{item.title}</h3>
-                  <p className="text-gray-600 leading-relaxed">{item.description}</p>
+
+                  <div className="text-sm font-semibold text-gray-400 mb-2">
+                    STEP {item.step}
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    {item.title}
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
-                
+
                 {index < 2 && (
                   <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2">
                     <ChevronRight className="w-8 h-8 text-gray-300" />
@@ -444,138 +462,35 @@ function App() {
           </div>
         </div>
       </section>
-
-      {/* Features Grid */}
-      <section className="py-20 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Powerful features for modern work
+      {/* Integration Slider Section */}
+      <section className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+              Seamlessly integrates with your favorite tools
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              FilePilot combines the latest AI technology with intuitive design for a seamless experience
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Connect FilePilot with the platforms you already use. Our growing
+              ecosystem of integrations ensures your workflow stays
+              uninterrupted.
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: Zap,
-                title: "AI Categorization",
-                description: "Intelligent document recognition and automatic labeling based on content and context.",
-                color: "blue"
-              },
-              {
-                icon: FileText,
-                title: "Drive Sync",
-                description: "Seamless integration with your existing Google Drive structure. No duplicate files.",
-                color: "green"
-              },
-              {
-                icon: Search,
-                title: "Smart Search",
-                description: "Document retrieval with vector search and natural language queries.",
-                color: "purple"
-              },
-              {
-                icon: Shield,
-                title: "Privacy First",
-                description: "No document storage, only metadata processing. Your data stays with you.",
-                color: "red"
-              }
-            ].map((feature, index) => (
-              <div key={index} className="group h-full">
-                <div className="bg-gray-50 rounded-2xl p-8 hover:bg-white hover:shadow-lg transition-all duration-300 border border-transparent hover:border-gray-200 h-full flex flex-col">
-                  <div className={`inline-flex items-center justify-center w-12 h-12 bg-${feature.color}-100 rounded-lg mb-6 group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
-                    <feature.icon className={`w-6 h-6 text-${feature.color}-600`} />
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{feature.title}</h3>
-                  <p className="text-gray-600 text-sm leading-relaxed flex-grow">{feature.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Transparent pricing, no surprises
-            </h2>
-            <p className="text-xl text-gray-600">
-              Choose the plan that fits your workflow. Cancel anytime.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
-            {stripeProducts.map((product, index) => (
-              <div key={product.id} className={`rounded-2xl p-8 shadow-lg border-2 hover:shadow-xl transition-all duration-300 flex flex-col ${
-                product.name === 'Yearly Plan' 
-                  ? 'bg-blue-600 border-blue-500 relative overflow-hidden' 
-                  : 'bg-white border-gray-200'
-              }`}>
-                {product.name === 'Yearly Plan' && (
-                  <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 px-3 py-1 rounded-full text-xs font-semibold">
-                    Popular choice
-                  </div>
-                )}
-                
-                <div className="text-center mb-8">
-                  <h3 className={`text-xl font-semibold mb-2 ${
-                    product.name === 'Yearly Plan' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {product.name}
-                  </h3>
-                  <div className={`text-4xl font-bold mb-1 ${
-                    product.name === 'Yearly Plan' ? 'text-white' : 'text-gray-900'
-                  }`}>
-                    {product.price}
-                  </div>
-                  <div className={product.name === 'Yearly Plan' ? 'text-blue-200' : 'text-gray-500'}>
-                    per {product.interval}
-                  </div>
-                  {product.name === 'Yearly Plan' && (
-                    <div className="text-sm text-blue-200 mt-2">2 months free!</div>
-                  )}
-                </div>
-                
-                <ul className="space-y-4 mb-8 flex-grow">
-                  {product.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center">
-                      <Check className={`w-5 h-5 mr-3 flex-shrink-0 ${
-                        product.name === 'Yearly Plan' ? 'text-blue-200' : 'text-green-500'
-                      }`} />
-                      <span className={product.name === 'Yearly Plan' ? 'text-blue-100' : 'text-gray-600'}>
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <button 
-                  onClick={handleGetStarted}
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors duration-300 mt-auto ${
-                    product.name === 'Yearly Plan'
-                      ? 'bg-white hover:bg-gray-100 text-blue-600'
-                      : 'bg-gray-900 hover:bg-gray-800 text-white'
-                  }`}
-                >
-                  Get Started
-                </button>
-              </div>
-            ))}
-          </div>
-          
-          <div className="text-center mt-8">
-            <div className="inline-flex items-center px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
-              <Clock className="w-4 h-4 text-blue-600 mr-2" />
-              <span className="text-sm text-gray-600">
-                {user ? 'Secure checkout with Stripe' : 'Sign up required • Secure checkout with Stripe'}
-              </span>
+          <IntegrationSlider />
+
+          <div className="flex justify-center items-center mt-12 space-x-8 text-sm text-gray-600">
+            <div className="flex items-center">
+              <Users className="w-4 h-4 mr-2 text-blue-600" />
+              <span className="font-semibold">1000+</span> users
+            </div>
+            <div className="flex items-center">
+              <FileText className="w-4 h-4 mr-2 text-blue-600" />
+              <span className="font-semibold">100,000+</span> documents
+              processed
+            </div>
+            <div className="flex items-center">
+              <Star className="w-4 h-4 mr-2 text-yellow-500" />
+              <span className="font-semibold">4.9/5</span> satisfaction
             </div>
           </div>
         </div>
@@ -586,7 +501,9 @@ function App() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-12 items-center">
             <div>
-              <h3 className="text-lg font-semibold mb-4">Security & Compliance</h3>
+              <h3 className="text-lg font-semibold mb-4">
+                Security & Compliance
+              </h3>
               <div className="flex flex-wrap gap-3">
                 <div className="bg-slate-800 px-3 py-2 rounded-lg text-sm border border-slate-700">
                   <Lock className="w-4 h-4 inline mr-2" />
@@ -598,32 +515,42 @@ function App() {
                 </div>
               </div>
             </div>
-            
+
             <div>
               <h3 className="text-lg font-semibold mb-4">Integrations</h3>
               <div className="flex flex-wrap gap-4 opacity-70">
-                <div className="bg-slate-800 px-4 py-2 rounded text-sm">Google</div>
-                <div className="bg-slate-800 px-4 py-2 rounded text-sm">OpenAI</div>
-                <div className="bg-slate-800 px-4 py-2 rounded text-sm">Stripe</div>
+                <div className="bg-slate-800 px-4 py-2 rounded text-sm">
+                  Google
+                </div>
+                <div className="bg-slate-800 px-4 py-2 rounded text-sm">
+                  OpenAI
+                </div>
+                <div className="bg-slate-800 px-4 py-2 rounded text-sm">
+                  Stripe
+                </div>
               </div>
             </div>
-            
+
             <div>
               <h3 className="text-lg font-semibold mb-4">Privacy Promise</h3>
               <p className="text-gray-300 text-sm leading-relaxed">
-                We never store your documents. Only metadata is processed for organization. 
-                Your privacy is our priority.
+                We never store your documents. Only metadata is processed for
+                organization. Your privacy is our priority.
               </p>
             </div>
           </div>
-          
+
           <div className="border-t border-slate-800 mt-12 pt-8 text-center">
             <p className="text-gray-400 text-sm">
-              © 2024 FilePilot. All rights reserved. 
+              © 2024 FilePilot. All rights reserved.
               <span className="mx-4">•</span>
-              <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-white transition-colors">
+                Privacy Policy
+              </a>
               <span className="mx-4">•</span>
-              <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="#" className="hover:text-white transition-colors">
+                Terms of Service
+              </a>
             </p>
           </div>
         </div>

@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { 
-  Check, 
-  FileText, 
-  Mail, 
-  Shield, 
+import React, { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import {
+  Check,
+  FileText,
+  Mail,
+  Shield,
   ArrowRight,
   Loader2,
   AlertCircle,
   RefreshCw,
-  Home
-} from 'lucide-react';
-import { SubscriptionStatus } from './components/SubscriptionStatus';
+  Home,
+} from "lucide-react";
+import { SubscriptionStatus } from "./components/SubscriptionStatus";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -28,24 +28,27 @@ function SuccessPage() {
 
   const checkUserAndUpdatePayment = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        
+
         // Mark payment as completed in onboarding steps
+
         await updatePaymentStep(session.user.id);
-        
+
         // Redirect to steps page after a short delay
         setTimeout(() => {
-          window.location.href = '/steps';
+          window.location.href = "/steps";
         }, 2000);
       } else {
         // Redirect to login if not authenticated
-        window.location.href = '/login';
+        window.location.href = "/login";
       }
     } catch (error) {
-      console.error('Error checking user:', error);
-      window.location.href = '/login';
+      console.error("Error checking user:", error);
+      window.location.href = "/login";
     } finally {
       setIsLoading(false);
     }
@@ -53,22 +56,25 @@ function SuccessPage() {
 
   const updatePaymentStep = async (userId: string) => {
     try {
-      const { error } = await supabase.rpc('update_onboarding_step', {
-        user_uuid: userId,
-        step_name: 'payment',
-        completed: true
-      });
+      // Always insert a new record for the customer
+      const { error } = await supabase.from("onboarding_steps").insert([
+        {
+          user_uuid: userId,
+          step_name: "payment",
+          completed: true,
+        },
+      ]);
 
       if (error) {
-        console.error('Error updating payment step:', error);
+        console.error("Error inserting onboarding step:", error);
       }
     } catch (error) {
-      console.error('Error updating payment step:', error);
+      console.error("Error inserting payment step:", error);
     }
   };
 
   const goHome = () => {
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   if (isLoading || !user) {
@@ -112,15 +118,13 @@ function SuccessPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
             <Check className="w-10 h-10 text-green-600" />
           </div>
-          
+
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
             Payment Successful! 🎉
           </h1>
-          
-          <p className="text-xl text-gray-600 mb-2">
-            Welcome to FilePilot
-          </p>
-          
+
+          <p className="text-xl text-gray-600 mb-2">Welcome to FilePilot</p>
+
           <div className="inline-flex items-center px-4 py-2 bg-green-100 rounded-full text-green-800 text-sm font-medium">
             <Check className="w-4 h-4 mr-2" />
             Your subscription is now active
@@ -132,19 +136,22 @@ function SuccessPage() {
           <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6 mx-auto">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
           </div>
-          
+
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             Setting up your account...
           </h2>
-          
+
           <p className="text-gray-600 mb-6">
-            We're preparing your FilePilot experience. You'll be redirected to complete the setup process in just a moment.
+            We're preparing your FilePilot experience. You'll be redirected to
+            complete the setup process in just a moment.
           </p>
-          
+
           <div className="bg-blue-50 rounded-lg p-4 mb-6">
             <p className="text-sm text-blue-800">
-              <strong>Next steps:</strong><br />
-              Connect your email accounts and select your Google Drive organization folder to start using FilePilot.
+              <strong>Next steps:</strong>
+              <br />
+              Connect your email accounts and select your Google Drive
+              organization folder to start using FilePilot.
             </p>
           </div>
 

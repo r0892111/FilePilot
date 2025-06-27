@@ -17,7 +17,11 @@ import {
   Lock,
   CheckCircle,
   Clock,
-  Play
+  Play,
+  Edit3,
+  Save,
+  X,
+  ExternalLink
 } from 'lucide-react';
 import { EmailSetupPage } from './EmailSetupPage';
 import { FolderSetupPage } from './FolderSetupPage';
@@ -34,6 +38,7 @@ interface OnboardingStep {
   completed: boolean;
   icon: React.ComponentType<any>;
   action: string;
+  manageAction?: string;
 }
 
 interface OnboardingStepsData {
@@ -46,6 +51,8 @@ interface OnboardingStepsData {
 interface SubscriptionData {
   subscription_status: string;
   price_id: string | null;
+  current_period_end: number | null;
+  cancel_at_period_end: boolean;
 }
 
 interface OnboardingStepsPageProps {
@@ -53,6 +60,14 @@ interface OnboardingStepsPageProps {
   onClose: () => void;
   isSubscribed: boolean;
   mode: 'setup' | 'manage';
+}
+
+interface EditableSettings {
+  emailNotifications: boolean;
+  autoOrganize: boolean;
+  folderStructure: 'date' | 'category' | 'sender';
+  duplicateHandling: 'skip' | 'rename' | 'replace';
+  fileTypes: string[];
 }
 
 export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsSubscribed, mode }: OnboardingStepsPageProps) {
@@ -66,6 +81,16 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'overview' | 'email' | 'folder'>('overview');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [settings, setSettings] = useState<EditableSettings>({
+    emailNotifications: true,
+    autoOrganize: true,
+    folderStructure: 'category',
+    duplicateHandling: 'rename',
+    fileTypes: ['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'png']
+  });
+  const [originalSettings, setOriginalSettings] = useState<EditableSettings>(settings);
 
   // Determine subscription status from database
   const isSubscribed = subscription?.subscription_status === 'active' || propIsSubscribed;
@@ -81,7 +106,8 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
         setUser(session.user);
         await Promise.all([
           loadOnboardingSteps(session.user.id),
-          loadSubscriptionData()
+          loadSubscriptionData(),
+          loadUserSettings(session.user.id)
         ]);
       }
     } catch (error) {
@@ -95,7 +121,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     try {
       const { data, error } = await supabase
         .from('stripe_user_subscriptions')
-        .select('subscription_status, price_id')
+        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
@@ -140,6 +166,25 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     }
   };
 
+  const loadUserSettings = async (userId: string) => {
+    // In a real app, this would load from a user_settings table
+    // For now, we'll use mock data
+    try {
+      // Simulate loading user preferences
+      const mockSettings: EditableSettings = {
+        emailNotifications: true,
+        autoOrganize: true,
+        folderStructure: 'category',
+        duplicateHandling: 'rename',
+        fileTypes: ['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'png']
+      };
+      setSettings(mockSettings);
+      setOriginalSettings(mockSettings);
+    } catch (error) {
+      console.error('Error loading user settings:', error);
+    }
+  };
+
   const initializeOnboardingSteps = async (userId: string) => {
     try {
       const { error } = await supabase.rpc('initialize_user_onboarding', {
@@ -155,13 +200,18 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   };
 
   const handleStepAction = async (stepId: string) => {
+    if (mode === 'manage' && isEditMode) {
+      // In edit mode, don't navigate to step pages
+      return;
+    }
+
     switch (stepId) {
       case 'payment':
         if (!isSubscribed) {
           window.location.href = '/#pricing';
-        } else {
-          // Already completed, maybe show billing management
-          alert('Payment completed! Manage your subscription in the billing section.');
+        } else if (mode === 'manage') {
+          // Open billing portal or subscription management
+          alert('Billing management would open here. This would typically redirect to Stripe Customer Portal.');
         }
         break;
       case 'email':
@@ -205,6 +255,41 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     }
   };
 
+  const handleEditToggle = () => {
+    if (isEditMode) {
+      // Cancel edit - restore original settings
+      setSettings(originalSettings);
+      setIsEditMode(false);
+    } else {
+      // Enter edit mode
+      setOriginalSettings(settings);
+      setIsEditMode(true);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!user) return;
+
+    setIsSaving(true);
+    try {
+      // In a real app, this would save to a user_settings table
+      // For now, we'll simulate the save operation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Update original settings to current settings
+      setOriginalSettings(settings);
+      setIsEditMode(false);
+      
+      // Show success message
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getStepStatus = (stepId: string): 'completed' | 'available' | 'locked' => {
     switch (stepId) {
       case 'payment':
@@ -229,7 +314,8 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
         : 'Select a subscription plan to get started',
       completed: stepsData.payment_completed || isSubscribed,
       icon: CreditCard,
-      action: mode === 'manage' ? 'Manage Billing' : 'Choose Plan'
+      action: mode === 'manage' ? 'Manage Billing' : 'Choose Plan',
+      manageAction: 'Open Billing Portal'
     },
     {
       id: 'email',
@@ -239,7 +325,8 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
         : 'Add email accounts to monitor for attachments',
       completed: stepsData.email_connected,
       icon: Mail,
-      action: mode === 'manage' ? 'Manage Emails' : 'Connect Email'
+      action: mode === 'manage' ? 'Manage Emails' : 'Connect Email',
+      manageAction: 'Configure Email Settings'
     },
     {
       id: 'folder',
@@ -249,7 +336,8 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
         : 'Choose where to organize your documents in Google Drive',
       completed: stepsData.folder_selected,
       icon: FolderOpen,
-      action: mode === 'manage' ? 'Manage Folders' : 'Select Folder'
+      action: mode === 'manage' ? 'Manage Folders' : 'Select Folder',
+      manageAction: 'Update Folder Settings'
     }
   ];
 
@@ -297,13 +385,50 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
               <FileText className="w-8 h-8 text-white mr-3" />
               <span className="text-xl font-bold text-white">FilePilot</span>
             </div>
-            <button
-              onClick={onClose}
-              className="flex items-center text-white/80 hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 mr-2" />
-              {mode === 'manage' ? 'Back to Dashboard' : 'Back to Home'}
-            </button>
+            <div className="flex items-center space-x-4">
+              {mode === 'manage' && (
+                <div className="flex items-center space-x-2">
+                  {isEditMode ? (
+                    <>
+                      <button
+                        onClick={handleSaveSettings}
+                        disabled={isSaving}
+                        className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+                      >
+                        {isSaving ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button
+                        onClick={handleEditToggle}
+                        className="flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleEditToggle}
+                      className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit Settings
+                    </button>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={onClose}
+                className="flex items-center text-white/80 hover:text-white transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                {mode === 'manage' ? 'Back to Dashboard' : 'Back to Home'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -333,7 +458,9 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
           
           <p className="text-xl text-blue-100 mb-6">
             {mode === 'manage'
-              ? 'Manage your FilePilot account settings and preferences'
+              ? isEditMode 
+                ? 'Edit your FilePilot preferences and save changes'
+                : 'Manage your FilePilot account settings and preferences'
               : allStepsCompleted
                 ? 'Your FilePilot account is fully configured and ready to use'
                 : `${completedSteps} of ${steps.length} steps completed`
@@ -350,6 +477,103 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
           )}
         </div>
 
+        {/* Settings Panel (only in manage mode) */}
+        {mode === 'manage' && isEditMode && (
+          <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Preferences</h2>
+            
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* General Settings */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">General Settings</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Email Notifications</label>
+                      <p className="text-xs text-gray-500">Receive updates about document processing</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.emailNotifications}
+                      onChange={(e) => setSettings({...settings, emailNotifications: e.target.checked})}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Auto-organize</label>
+                      <p className="text-xs text-gray-500">Automatically organize new attachments</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.autoOrganize}
+                      onChange={(e) => setSettings({...settings, autoOrganize: e.target.checked})}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Organization Settings */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Organization</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Folder Structure</label>
+                    <select
+                      value={settings.folderStructure}
+                      onChange={(e) => setSettings({...settings, folderStructure: e.target.value as any})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="category">By Category</option>
+                      <option value="date">By Date</option>
+                      <option value="sender">By Sender</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Duplicate Handling</label>
+                    <select
+                      value={settings.duplicateHandling}
+                      onChange={(e) => setSettings({...settings, duplicateHandling: e.target.value as any})}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="skip">Skip duplicates</option>
+                      <option value="rename">Rename duplicates</option>
+                      <option value="replace">Replace existing</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* File Types */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Supported File Types</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'png', 'txt', 'zip'].map((type) => (
+                  <label key={type} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings.fileTypes.includes(type)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSettings({...settings, fileTypes: [...settings.fileTypes, type]});
+                        } else {
+                          setSettings({...settings, fileTypes: settings.fileTypes.filter(t => t !== type)});
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 mr-2"
+                    />
+                    <span className="text-sm text-gray-700 uppercase">{type}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Steps Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {steps.map((step, index) => {
@@ -365,8 +589,8 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                     : status === 'available'
                     ? 'border-blue-200 hover:border-blue-300 hover:shadow-2xl cursor-pointer'
                     : 'border-gray-200 bg-gray-50 opacity-60'
-                }`}
-                onClick={() => status === 'available' && handleStepAction(step.id)}
+                } ${isEditMode && mode === 'manage' ? 'pointer-events-none opacity-75' : ''}`}
+                onClick={() => !isEditMode && status === 'available' && handleStepAction(step.id)}
               >
                 <div className="flex items-center justify-between mb-6">
                   <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
@@ -393,9 +617,23 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                   {/* Action button aligned at bottom */}
                   <div className="mt-auto">
                     {status === 'completed' ? (
-                      <div className="flex items-center text-green-600 font-medium">
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        {mode === 'manage' ? 'Configured' : 'Completed'}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-green-600 font-medium">
+                          <CheckCircle className="w-5 h-5 mr-2" />
+                          {mode === 'manage' ? 'Configured' : 'Completed'}
+                        </div>
+                        {mode === 'manage' && step.id === 'payment' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStepAction(step.id);
+                            }}
+                            className="flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                            Manage
+                          </button>
+                        )}
                       </div>
                     ) : status === 'available' ? (
                       <button
@@ -403,9 +641,10 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                           e.stopPropagation();
                           handleStepAction(step.id);
                         }}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
+                        disabled={isEditMode && mode === 'manage'}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center disabled:cursor-not-allowed"
                       >
-                        {step.action}
+                        {mode === 'manage' && step.manageAction ? step.manageAction : step.action}
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </button>
                     ) : (

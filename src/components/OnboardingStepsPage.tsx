@@ -9,23 +9,18 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
-  Plus,
-  Trash2,
   FileText,
   Shield,
   Zap,
   Crown,
-  ChevronDown,
-  ChevronRight,
-  RefreshCw,
   Settings,
-  Edit,
   Lock,
   CheckCircle,
   Clock,
   Play
 } from 'lucide-react';
-import { stripeProducts } from '../stripe-config';
+import { EmailSetupPage } from './EmailSetupPage';
+import { FolderSetupPage } from './FolderSetupPage';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -48,6 +43,11 @@ interface OnboardingStepsData {
   onboarding_completed: boolean;
 }
 
+interface SubscriptionData {
+  subscription_status: string;
+  price_id: string | null;
+}
+
 interface OnboardingStepsPageProps {
   onComplete: () => void;
   onClose: () => void;
@@ -55,7 +55,7 @@ interface OnboardingStepsPageProps {
   mode: 'setup' | 'manage';
 }
 
-export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }: OnboardingStepsPageProps) {
+export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsSubscribed, mode }: OnboardingStepsPageProps) {
   const [user, setUser] = useState<any>(null);
   const [stepsData, setStepsData] = useState<OnboardingStepsData>({
     payment_completed: false,
@@ -63,24 +63,51 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }:
     folder_selected: false,
     onboarding_completed: false
   });
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [currentView, setCurrentView] = useState<'overview' | 'email' | 'folder'>('overview');
+
+  // Determine subscription status from database
+  const isSubscribed = subscription?.subscription_status === 'active' || propIsSubscribed;
 
   useEffect(() => {
-    checkUserAndLoadSteps();
+    checkUserAndLoadData();
   }, []);
 
-  const checkUserAndLoadSteps = async () => {
+  const checkUserAndLoadData = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        await loadOnboardingSteps(session.user.id);
+        await Promise.all([
+          loadOnboardingSteps(session.user.id),
+          loadSubscriptionData()
+        ]);
       }
     } catch (error) {
       console.error('Error checking user:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSubscriptionData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('stripe_user_subscriptions')
+        .select('subscription_status, price_id')
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading subscription:', error);
+        return;
+      }
+
+      if (data) {
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error('Error loading subscription:', error);
     }
   };
 
@@ -127,38 +154,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }:
     }
   };
 
-  const updateOnboardingStep = async (stepName: string, completed: boolean) => {
-    if (!user) return;
-
-    setIsUpdating(true);
-    try {
-      const { error } = await supabase.rpc('update_onboarding_step', {
-        user_uuid: user.id,
-        step_name: stepName,
-        completed: completed
-      });
-
-      if (error) {
-        console.error('Error updating onboarding step:', error);
-        return;
-      }
-
-      // Reload steps to get updated data
-      await loadOnboardingSteps(user.id);
-    } catch (error) {
-      console.error('Error updating onboarding step:', error);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const handleStepAction = async (stepId: string) => {
-    if (!isSubscribed && stepId !== 'payment') {
-      // Redirect to payment if not subscribed
-      window.location.href = '/#pricing';
-      return;
-    }
-
     switch (stepId) {
       case 'payment':
         if (!isSubscribed) {
@@ -169,44 +165,50 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }:
         }
         break;
       case 'email':
-        if (mode === 'manage') {
-          // Show email management interface
-          alert('Email management interface would open here');
+        if (!isSubscribed) {
+          window.location.href = '/#pricing';
         } else {
-          // Simulate email connection
-          await simulateEmailConnection();
+          setCurrentView('email');
         }
         break;
       case 'folder':
-        if (mode === 'manage') {
-          // Show folder management interface
-          alert('Folder management interface would open here');
+        if (!isSubscribed) {
+          window.location.href = '/#pricing';
         } else {
-          // Simulate folder selection
-          await simulateFolderSelection();
+          setCurrentView('folder');
         }
         break;
     }
   };
 
-  const simulateEmailConnection = async () => {
-    setIsUpdating(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    await updateOnboardingStep('email', true);
+  const handleEmailSetupComplete = async () => {
+    setCurrentView('overview');
+    if (user) {
+      await loadOnboardingSteps(user.id);
+    }
   };
 
-  const simulateFolderSelection = async () => {
-    setIsUpdating(true);
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    await updateOnboardingStep('folder', true);
+  const handleFolderSetupComplete = async () => {
+    setCurrentView('overview');
+    if (user) {
+      await loadOnboardingSteps(user.id);
+      // Check if all steps are completed
+      const { data } = await supabase
+        .from('user_onboarding_steps')
+        .select('onboarding_completed')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (data?.onboarding_completed) {
+        onComplete();
+      }
+    }
   };
 
   const getStepStatus = (stepId: string): 'completed' | 'available' | 'locked' => {
     switch (stepId) {
       case 'payment':
-        return stepsData.payment_completed ? 'completed' : 'available';
+        return stepsData.payment_completed || isSubscribed ? 'completed' : 'available';
       case 'email':
         if (stepsData.email_connected) return 'completed';
         return isSubscribed ? 'available' : 'locked';
@@ -225,7 +227,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }:
       description: mode === 'manage' 
         ? 'Manage your subscription and billing settings'
         : 'Select a subscription plan to get started',
-      completed: stepsData.payment_completed,
+      completed: stepsData.payment_completed || isSubscribed,
       icon: CreditCard,
       action: mode === 'manage' ? 'Manage Billing' : 'Choose Plan'
     },
@@ -265,6 +267,26 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }:
     );
   }
 
+  // Render specific setup pages
+  if (currentView === 'email') {
+    return (
+      <EmailSetupPage
+        onComplete={handleEmailSetupComplete}
+        onBack={() => setCurrentView('overview')}
+      />
+    );
+  }
+
+  if (currentView === 'folder') {
+    return (
+      <FolderSetupPage
+        onComplete={handleFolderSetupComplete}
+        onBack={() => setCurrentView('overview')}
+      />
+    );
+  }
+
+  // Main overview page
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
       {/* Header */}
@@ -378,20 +400,10 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed, mode }:
                       e.stopPropagation();
                       handleStepAction(step.id);
                     }}
-                    disabled={isUpdating}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
                   >
-                    {isUpdating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        {step.action}
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </>
-                    )}
+                    {step.action}
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </button>
                 ) : (
                   <div className="flex items-center text-gray-400 font-medium">

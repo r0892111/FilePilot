@@ -16,7 +16,9 @@ import {
   Home,
   Folder,
   HardDrive,
-  CheckCircle
+  CheckCircle,
+  Target,
+  AlertTriangle
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -272,7 +274,7 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <FileText className="w-8 h-8 text-white mr-3" />
@@ -290,7 +292,7 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Header Section */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">
@@ -305,9 +307,9 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
             Choose where FilePilot should organize your email attachments in Google Drive
           </p>
 
-          <div className="inline-flex items-center px-4 py-2 bg-green-500/20 rounded-full border border-green-400/30 text-green-200 text-sm">
-            <Shield className="w-4 h-4 mr-2" />
-            Your existing files will remain untouched
+          <div className="inline-flex items-center px-4 py-2 bg-orange-500/20 rounded-full border border-orange-400/30 text-orange-200 text-sm mb-4">
+            <Target className="w-4 h-4 mr-2" />
+            This folder will contain all your organized documents
           </div>
         </div>
 
@@ -411,7 +413,7 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
               <div className="bg-white rounded-2xl p-6 shadow-xl border-2 border-blue-200">
                 <div className="flex items-center mb-4">
                   <CheckCircle className="w-6 h-6 text-blue-600 mr-3" />
-                  <h3 className="text-lg font-semibold text-gray-900">Selected Folder</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Selected Organization Folder</h3>
                 </div>
                 
                 <div className="bg-blue-50 rounded-lg p-4">
@@ -422,18 +424,26 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
                   <div className="text-sm text-blue-700 mb-3">
                     Path: {selectedFolderInfo.path}
                   </div>
-                  <div className="text-xs text-blue-600">
-                    FilePilot will create organized subfolders here for different document categories
+                  
+                  <div className="bg-orange-100 border border-orange-200 rounded-lg p-3 mb-3">
+                    <div className="flex items-center text-orange-800 mb-2">
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      <span className="font-medium text-sm">Important:</span>
+                    </div>
+                    <div className="text-xs text-orange-700">
+                      All your organized email attachments will be stored in this folder. 
+                      FilePilot will create organized subfolders here for different document categories.
+                    </div>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - Aligned with main content */}
           <div className="space-y-6">
             {/* Organization Preview */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Folder className="w-6 h-6 text-yellow-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">Organization Structure</h3>
@@ -472,7 +482,7 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
             </div>
 
             {/* Features */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Shield className="w-6 h-6 text-green-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">Safe Organization</h3>
@@ -499,7 +509,7 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
             </div>
 
             {/* Tips */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Home className="w-6 h-6 text-blue-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">Pro Tips</h3>

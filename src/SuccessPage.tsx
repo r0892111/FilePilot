@@ -21,10 +21,20 @@ const supabase = createClient(
 function SuccessPage() {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [countdown, setCountdown] = useState(6);
 
   useEffect(() => {
     checkUserAndUpdatePayment();
   }, []);
+
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (user) {
+      window.location.href = "/steps";
+    }
+  }, [countdown, user]);
 
   const checkUserAndUpdatePayment = async () => {
     try {
@@ -36,11 +46,6 @@ function SuccessPage() {
 
         // Mark payment as completed in onboarding steps
         await updatePaymentStep(session.user.id);
-
-        // Redirect to steps page after a short delay
-        setTimeout(() => {
-          window.location.href = "/steps";
-        }, 3000);
       } else {
         // Redirect to login if not authenticated
         window.location.href = "/login";
@@ -72,6 +77,10 @@ function SuccessPage() {
 
   const goHome = () => {
     window.location.href = "/";
+  };
+
+  const goToSteps = () => {
+    window.location.href = "/steps";
   };
 
   if (isLoading || !user) {
@@ -131,7 +140,7 @@ function SuccessPage() {
         {/* Redirect Message */}
         <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 text-center">
           <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-6 mx-auto">
-            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            <div className="text-2xl font-bold text-blue-600">{countdown}</div>
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -139,20 +148,39 @@ function SuccessPage() {
           </h2>
 
           <p className="text-gray-600 mb-6">
-            We're preparing your FilePilot experience. You'll be redirected to
-            complete the setup process in just a moment.
+            Thank you for your payment! Your FilePilot subscription is now active. 
+            We're preparing your account and you'll be redirected to complete the setup process in <strong>{countdown} seconds</strong>.
           </p>
 
-          <div className="bg-blue-50 rounded-lg p-4 mb-6">
-            <p className="text-sm text-blue-800">
-              <strong>Next steps:</strong>
-              <br />
-              Connect your email accounts and select your Google Drive
-              organization folder to start using FilePilot.
-            </p>
+          <div className="bg-blue-50 rounded-lg p-6 mb-6">
+            <h3 className="font-semibold text-blue-900 mb-3">What's Next?</h3>
+            <div className="text-sm text-blue-800 space-y-2">
+              <div className="flex items-center">
+                <Mail className="w-4 h-4 mr-2" />
+                <span>Connect your email accounts for monitoring</span>
+              </div>
+              <div className="flex items-center">
+                <FileText className="w-4 h-4 mr-2" />
+                <span>Select your Google Drive organization folder</span>
+              </div>
+              <div className="flex items-center">
+                <Check className="w-4 h-4 mr-2" />
+                <span>Start automatic document organization</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center justify-center text-sm text-gray-500">
+          <div className="flex items-center justify-center space-x-4">
+            <button
+              onClick={goToSteps}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center"
+            >
+              Continue Setup Now
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-center text-sm text-gray-500 mt-6">
             <Shield className="w-4 h-4 mr-2 text-green-500" />
             <span>Your data is encrypted and secure</span>
           </div>

@@ -28,7 +28,7 @@ const supabase = createClient(
 interface EmailAccount {
   id: string;
   email: string;
-  provider: 'gmail' | 'outlook' | 'yahoo' | 'other';
+  provider: 'gmail' | 'outlook';
   connected: boolean;
   lastSync?: string;
   status: 'active' | 'error' | 'syncing';
@@ -65,20 +65,11 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const loadExistingAccounts = () => {
     // Simulate loading existing connected accounts
     // In a real app, this would fetch from your database
-    const mockAccounts: EmailAccount[] = [
-      {
-        id: '1',
-        email: 'user@gmail.com',
-        provider: 'gmail',
-        connected: true,
-        lastSync: new Date().toISOString(),
-        status: 'active'
-      }
-    ];
+    const mockAccounts: EmailAccount[] = [];
     setEmailAccounts(mockAccounts);
   };
 
-  const connectEmailAccount = async (provider: 'gmail' | 'outlook' | 'yahoo' | 'other') => {
+  const connectEmailAccount = async (provider: 'gmail' | 'outlook') => {
     setIsConnecting(true);
     setConnectingProvider(provider);
     
@@ -88,7 +79,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       
       const newAccount: EmailAccount = {
         id: Math.random().toString(36).substr(2, 9),
-        email: `user@${provider === 'other' ? 'example' : provider}.com`,
+        email: `user@${provider === 'gmail' ? 'gmail' : 'outlook'}.com`,
         provider,
         connected: true,
         lastSync: new Date().toISOString(),
@@ -166,12 +157,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             <Mail className="w-4 h-4 text-blue-600" />
           </div>
         );
-      case 'yahoo':
-        return (
-          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-            <Mail className="w-4 h-4 text-purple-600" />
-          </div>
-        );
       default:
         return (
           <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
@@ -198,7 +183,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <FileText className="w-8 h-8 text-white mr-3" />
@@ -216,7 +201,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Header Section */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">
@@ -314,9 +299,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               <div className="grid md:grid-cols-2 gap-4">
                 {[
                   { provider: 'gmail' as const, name: 'Gmail', color: 'red', description: 'Google Workspace & Gmail' },
-                  { provider: 'outlook' as const, name: 'Outlook', color: 'blue', description: 'Microsoft 365 & Outlook.com' },
-                  { provider: 'yahoo' as const, name: 'Yahoo Mail', color: 'purple', description: 'Yahoo Mail accounts' },
-                  { provider: 'other' as const, name: 'Other IMAP', color: 'gray', description: 'Custom IMAP servers' }
+                  { provider: 'outlook' as const, name: 'Outlook', color: 'blue', description: 'Microsoft 365 & Outlook.com' }
                 ].map((email) => (
                   <button
                     key={email.provider}
@@ -360,10 +343,10 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - Aligned with main content */}
           <div className="space-y-6">
             {/* Features */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Zap className="w-6 h-6 text-yellow-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">What We Monitor</h3>
@@ -390,7 +373,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             </div>
 
             {/* Security */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Shield className="w-6 h-6 text-green-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">Privacy & Security</h3>
@@ -417,7 +400,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             </div>
 
             {/* Supported Providers */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Globe className="w-6 h-6 text-blue-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">Supported Providers</h3>
@@ -426,8 +409,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               <div className="space-y-2 text-sm text-blue-100">
                 <div>✓ Gmail & Google Workspace</div>
                 <div>✓ Outlook & Microsoft 365</div>
-                <div>✓ Yahoo Mail</div>
-                <div>✓ Custom IMAP servers</div>
                 <div className="text-xs text-blue-200 mt-3">
                   More providers coming soon
                 </div>

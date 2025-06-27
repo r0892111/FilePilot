@@ -359,7 +359,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
             return (
               <div
                 key={step.id}
-                className={`bg-white rounded-2xl p-8 shadow-xl border-2 transition-all duration-300 ${
+                className={`bg-white rounded-2xl p-8 shadow-xl border-2 transition-all duration-300 flex flex-col h-full ${
                   status === 'completed' 
                     ? 'border-green-200 bg-green-50' 
                     : status === 'available'
@@ -386,31 +386,36 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                   </div>
                 </div>
                 
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">{step.description}</p>
-                
-                {status === 'completed' ? (
-                  <div className="flex items-center text-green-600 font-medium">
-                    <CheckCircle className="w-5 h-5 mr-2" />
-                    {mode === 'manage' ? 'Configured' : 'Completed'}
+                <div className="flex-1 flex flex-col">
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed flex-1">{step.description}</p>
+                  
+                  {/* Action button aligned at bottom */}
+                  <div className="mt-auto">
+                    {status === 'completed' ? (
+                      <div className="flex items-center text-green-600 font-medium">
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        {mode === 'manage' ? 'Configured' : 'Completed'}
+                      </div>
+                    ) : status === 'available' ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStepAction(step.id);
+                        }}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
+                      >
+                        {step.action}
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </button>
+                    ) : (
+                      <div className="flex items-center text-gray-400 font-medium">
+                        <Lock className="w-5 h-5 mr-2" />
+                        {isSubscribed ? 'Complete previous steps' : 'Subscription required'}
+                      </div>
+                    )}
                   </div>
-                ) : status === 'available' ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStepAction(step.id);
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors flex items-center justify-center"
-                  >
-                    {step.action}
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </button>
-                ) : (
-                  <div className="flex items-center text-gray-400 font-medium">
-                    <Lock className="w-5 h-5 mr-2" />
-                    {isSubscribed ? 'Complete previous steps' : 'Subscription required'}
-                  </div>
-                )}
+                </div>
               </div>
             );
           })}

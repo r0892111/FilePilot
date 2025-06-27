@@ -153,14 +153,6 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           </div>
         )}
 
-        {/* Debug Information */}
-        <div className="mb-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
-          <div><strong>Debug Info:</strong></div>
-          <div>Supabase URL: {import.meta.env.VITE_SUPABASE_URL ? '✓ Set' : '✗ Missing'}</div>
-          <div>Supabase Key: {import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing'}</div>
-          <div>Current URL: {window.location.origin}</div>
-        </div>
-
         {/* Google OAuth Button */}
         <button
           onClick={handleGoogleAuth}

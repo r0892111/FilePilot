@@ -70,6 +70,8 @@ function App() {
           user_metadata: session.user.user_metadata,
         });
         checkSubscription(session.user.id);
+        // Show onboarding modal immediately after sign in
+        setShowOnboarding(true);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setSubscription(null);

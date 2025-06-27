@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import { 
   FileText, 
   Upload,
-  FolderOpen,
   Activity,
   TrendingUp,
   Clock,
@@ -20,14 +19,12 @@ import {
   Zap,
   Shield,
   Settings,
-  Plus,
   ArrowRight,
   Mail,
   Target,
-  Folder,
   RefreshCw
 } from 'lucide-react';
-import { OnboardingFlow } from './OnboardingFlow';
+import { OnboardingStepsPage } from './OnboardingStepsPage';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -69,13 +66,11 @@ interface RecentDocument {
   status: 'processed' | 'processing' | 'failed';
 }
 
-interface SetupStep {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-  action: string;
-  icon: React.ComponentType<any>;
+interface OnboardingStepsData {
+  payment_completed: boolean;
+  email_connected: boolean;
+  folder_selected: boolean;
+  onboarding_completed: boolean;
 }
 
 export function Dashboard() {
@@ -84,7 +79,12 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [setupComplete, setSetupComplete] = useState(false);
+  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData>({
+    payment_completed: false,
+    email_connected: false,
+    folder_selected: false,
+    onboarding_completed: false
+  });
   const [stats, setStats] = useState<DashboardStats>({
     totalDocuments: 0,
     documentsThisMonth: 0,
@@ -92,32 +92,6 @@ export function Dashboard() {
     storageUsed: '0 MB'
   });
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
-  const [setupSteps, setSetupSteps] = useState<SetupStep[]>([
-    {
-      id: 'email',
-      title: 'Connect Email Accounts',
-      description: 'Add email accounts to monitor for attachments',
-      completed: false,
-      action: 'Connect Email',
-      icon: Mail
-    },
-    {
-      id: 'folder',
-      title: 'Select Organization Folder',
-      description: 'Choose where to organize your documents in Google Drive',
-      completed: false,
-      action: 'Select Folder',
-      icon: FolderOpen
-    },
-    {
-      id: 'sync',
-      title: 'Start Monitoring',
-      description: 'Begin automatic email attachment processing',
-      completed: false,
-      action: 'Start Sync',
-      icon: Zap
-    }
-  ]);
 
   useEffect(() => {
     checkUserAndSubscription();
@@ -150,8 +124,8 @@ export function Dashboard() {
       } else if (subscriptionData && subscriptionData.subscription_status === 'active') {
         setSubscription(subscriptionData);
         setIsAuthorized(true);
+        await loadOnboardingSteps(session.user.id);
         loadDashboardData();
-        checkSetupStatus();
       } else {
         setIsAuthorized(false);
       }
@@ -163,21 +137,30 @@ export function Dashboard() {
     }
   };
 
-  const checkSetupStatus = () => {
-    // Simulate checking setup status
-    // In a real app, this would check the database for user's setup progress
-    const emailConnected = Math.random() > 0.7;
-    const folderSelected = Math.random() > 0.5;
-    const syncStarted = emailConnected && folderSelected;
-    
-    setSetupSteps(prev => prev.map(step => ({
-      ...step,
-      completed: step.id === 'email' ? emailConnected : 
-                 step.id === 'folder' ? folderSelected :
-                 step.id === 'sync' ? syncStarted : false
-    })));
-    
-    setSetupComplete(emailConnected && folderSelected && syncStarted);
+  const loadOnboardingSteps = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_onboarding_steps')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading onboarding steps:', error);
+        return;
+      }
+
+      if (data) {
+        setOnboardingSteps({
+          payment_completed: data.payment_completed,
+          email_connected: data.email_connected,
+          folder_selected: data.folder_selected,
+          onboarding_completed: data.onboarding_completed
+        });
+      }
+    } catch (error) {
+      console.error('Error loading onboarding steps:', error);
+    }
   };
 
   const loadDashboardData = async () => {
@@ -287,22 +270,20 @@ export function Dashboard() {
     }
   };
 
-  const handleSetupAction = (stepId: string) => {
-    if (stepId === 'email' || stepId === 'folder') {
-      setShowOnboarding(true);
-    } else if (stepId === 'sync') {
-      // Start sync process
-      alert('Starting email monitoring...');
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // Refresh onboarding steps
+    if (user) {
+      loadOnboardingSteps(user.id);
     }
   };
 
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    setSetupComplete(true);
-    setSetupSteps(prev => prev.map(step => ({ ...step, completed: true })));
-    // Refresh dashboard data
-    loadDashboardData();
-  };
+  const setupComplete = onboardingSteps.onboarding_completed;
+  const completedSteps = [
+    onboardingSteps.payment_completed,
+    onboardingSteps.email_connected,
+    onboardingSteps.folder_selected
+  ].filter(Boolean).length;
 
   if (isLoading) {
     return (
@@ -358,9 +339,11 @@ export function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Onboarding Flow */}
       {showOnboarding && (
-        <OnboardingFlow
+        <OnboardingStepsPage
           onComplete={handleOnboardingComplete}
           onClose={() => setShowOnboarding(false)}
+          isSubscribed={true}
+          mode="manage"
         />
       )}
 
@@ -387,7 +370,10 @@ export function Dashboard() {
                 Welcome, {user ? getUserDisplayName(user) : 'User'}
               </div>
               
-              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+              <button 
+                onClick={() => setShowOnboarding(true)}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
                 <Settings className="w-5 h-5" />
               </button>
               
@@ -413,7 +399,7 @@ export function Dashboard() {
           <p className="text-gray-600">
             {setupComplete 
               ? "Here's what's happening with your document organization today."
-              : "Let's finish setting up your account to start organizing your documents."
+              : `Setup progress: ${completedSteps}/3 steps completed. Click the settings icon to continue.`
             }
           </p>
         </div>
@@ -424,65 +410,30 @@ export function Dashboard() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Complete Your Setup</h2>
-                <p className="text-gray-600">Finish these steps to start organizing your email attachments</p>
+                <p className="text-gray-600">Finish configuring your account to start organizing email attachments</p>
               </div>
               <div className="text-right">
                 <div className="text-2xl font-bold text-blue-600">
-                  {setupSteps.filter(s => s.completed).length}/{setupSteps.length}
+                  {completedSteps}/3
                 </div>
                 <div className="text-sm text-gray-500">Steps completed</div>
               </div>
             </div>
             
-            <div className="grid md:grid-cols-3 gap-6">
-              {setupSteps.map((step, index) => {
-                const StepIcon = step.icon;
-                return (
-                  <div
-                    key={step.id}
-                    className={`bg-white rounded-xl p-6 border-2 transition-all duration-300 ${
-                      step.completed 
-                        ? 'border-green-200 bg-green-50' 
-                        : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        step.completed ? 'bg-green-100' : 'bg-blue-100'
-                      }`}>
-                        {step.completed ? (
-                          <CheckCircle className="w-6 h-6 text-green-600" />
-                        ) : (
-                          <StepIcon className="w-6 h-6 text-blue-600" />
-                        )}
-                      </div>
-                      <div className="text-sm font-medium text-gray-500">
-                        Step {index + 1}
-                      </div>
-                    </div>
-                    
-                    <h3 className="font-semibold text-gray-900 mb-2">{step.title}</h3>
-                    <p className="text-sm text-gray-600 mb-4">{step.description}</p>
-                    
-                    {!step.completed && (
-                      <button
-                        onClick={() => handleSetupAction(step.id)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        {step.action}
-                      </button>
-                    )}
-                    
-                    {step.completed && (
-                      <div className="flex items-center text-green-600 text-sm font-medium">
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Completed
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="w-full bg-white/50 rounded-full h-3 mb-6">
+              <div 
+                className="bg-gradient-to-r from-blue-400 to-green-400 h-3 rounded-full transition-all duration-500"
+                style={{ width: `${(completedSteps / 3) * 100}%` }}
+              ></div>
             </div>
+
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center"
+            >
+              Continue Setup
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
           </div>
         )}
 
@@ -538,7 +489,7 @@ export function Dashboard() {
         </div>
 
         {/* Action Cards */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Quick Upload</h3>
@@ -555,25 +506,9 @@ export function Dashboard() {
             </button>
           </div>
 
-          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Browse Drive</h3>
-              <FolderOpen className="w-6 h-6" />
-            </div>
-            <p className="text-green-100 mb-4">
-              Access your organized documents directly in Google Drive with smart folder structure.
-            </p>
-            <button 
-              onClick={() => window.location.href = '/browse'}
-              className="bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition-colors"
-            >
-              Browse Files
-            </button>
-          </div>
-
           <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Setup Assistant</h3>
+              <h3 className="text-lg font-semibold">Account Settings</h3>
               <Settings className="w-6 h-6" />
             </div>
             <p className="text-purple-100 mb-4">

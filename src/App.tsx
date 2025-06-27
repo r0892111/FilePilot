@@ -22,6 +22,7 @@ import { stripeProducts } from './stripe-config';
 import { SubscriptionStatus } from './components/SubscriptionStatus';
 import { IntegrationSlider } from './components/IntegrationSlider';
 import { OnboardingFlow } from './components/OnboardingFlow';
+import { OnboardingStepsPage } from './components/OnboardingStepsPage';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -52,6 +53,7 @@ function App() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showStepsPage, setShowStepsPage] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -173,9 +175,22 @@ function App() {
         <OnboardingFlow
           onComplete={() => {
             setShowOnboarding(false);
-            window.location.href = '/dashboard';
+            setShowStepsPage(true);
           }}
           onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
+      {/* Steps Page */}
+      {showStepsPage && (
+        <OnboardingStepsPage
+          onComplete={() => {
+            setShowStepsPage(false);
+            window.location.href = '/dashboard';
+          }}
+          onClose={() => setShowStepsPage(false)}
+          isSubscribed={hasActiveSubscription || false}
+          mode="setup"
         />
       )}
 

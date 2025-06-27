@@ -12,12 +12,12 @@ import {
   RefreshCw,
   FileText,
   Shield,
-  Globe,
   Zap,
   CheckCircle,
   Settings,
   Eye,
-  EyeOff
+  EyeOff,
+  X
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -45,11 +45,20 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string>('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAddEmailModal, setShowAddEmailModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<'gmail' | 'outlook'>('gmail');
+  const [emailInput, setEmailInput] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkUser();
-    loadExistingAccounts();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadEmailAccounts();
+    }
+  }, [user]);
 
   const checkUser = async () => {
     try {
@@ -59,61 +68,177 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       }
     } catch (error) {
       console.error('Error checking user:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const loadExistingAccounts = () => {
-    // Simulate loading existing connected accounts
-    // In a real app, this would fetch from your database
-    const mockAccounts: EmailAccount[] = [];
-    setEmailAccounts(mockAccounts);
+  const loadEmailAccounts = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_email_accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading email accounts:', error);
+        return;
+      }
+
+      const accounts: EmailAccount[] = (data || []).map(account => ({
+        id: account.id.toString(),
+        email: account.email,
+        provider: account.provider as 'gmail' | 'outlook',
+        connected: true,
+        lastSync: account.last_sync,
+        status: account.status as 'active' | 'error' | 'syncing'
+      }));
+
+      setEmailAccounts(accounts);
+    } catch (error) {
+      console.error('Error loading email accounts:', error);
+    }
   };
 
-  const connectEmailAccount = async (provider: 'gmail' | 'outlook') => {
+  const handleAddEmailClick = (provider: 'gmail' | 'outlook') => {
+    setSelectedProvider(provider);
+    setEmailInput('');
+    setShowAddEmailModal(true);
+  };
+
+  const handleAddEmail = async () => {
+    if (!emailInput.trim() || !user) return;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailInput)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    // Check if email already exists
+    if (emailAccounts.some(account => account.email === emailInput)) {
+      alert('This email account is already connected');
+      return;
+    }
+
     setIsConnecting(true);
-    setConnectingProvider(provider);
-    
+    setConnectingProvider(selectedProvider);
+
     try {
-      // Simulate OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
+      // Call Supabase function to add email account
+      const { data, error } = await supabase.rpc('add_user_email_account', {
+        user_uuid: user.id,
+        email_address: emailInput.trim(),
+        email_provider: selectedProvider
+      });
+
+      if (error) {
+        console.error('Error adding email account:', error);
+        if (error.message.includes('already exists')) {
+          alert('This email account is already connected to your account');
+        } else {
+          alert('Failed to add email account. Please try again.');
+        }
+        return;
+      }
+
+      // Add to local state
       const newAccount: EmailAccount = {
-        id: Math.random().toString(36).substr(2, 9),
-        email: `user@${provider === 'gmail' ? 'gmail' : 'outlook'}.com`,
-        provider,
+        id: data.id.toString(),
+        email: data.email,
+        provider: data.provider as 'gmail' | 'outlook',
         connected: true,
-        lastSync: new Date().toISOString(),
+        lastSync: data.connected_at,
         status: 'active'
       };
-      
-      setEmailAccounts(prev => [...prev, newAccount]);
+
+      setEmailAccounts(prev => [newAccount, ...prev]);
+      setShowAddEmailModal(false);
+      setEmailInput('');
+
     } catch (error) {
-      console.error('Error connecting email:', error);
+      console.error('Error adding email account:', error);
+      alert('An error occurred while adding the email account. Please try again.');
     } finally {
       setIsConnecting(false);
       setConnectingProvider('');
     }
   };
 
-  const removeEmailAccount = async (accountId: string) => {
-    setEmailAccounts(prev => prev.filter(acc => acc.id !== accountId));
+  const removeEmailAccount = async (accountId: string, email: string) => {
+    if (!user) return;
+
+    if (!confirm(`Are you sure you want to remove ${email}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc('remove_user_email_account', {
+        user_uuid: user.id,
+        email_address: email
+      });
+
+      if (error) {
+        console.error('Error removing email account:', error);
+        alert('Failed to remove email account. Please try again.');
+        return;
+      }
+
+      setEmailAccounts(prev => prev.filter(acc => acc.id !== accountId));
+    } catch (error) {
+      console.error('Error removing email account:', error);
+      alert('An error occurred while removing the email account. Please try again.');
+    }
   };
 
-  const testConnection = async (accountId: string) => {
+  const testConnection = async (accountId: string, email: string) => {
+    if (!user) return;
+
     setEmailAccounts(prev => prev.map(acc => 
       acc.id === accountId 
         ? { ...acc, status: 'syncing' }
         : acc
     ));
 
-    // Simulate connection test
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Update status to syncing in database
+      await supabase.rpc('update_email_account_status', {
+        user_uuid: user.id,
+        email_address: email,
+        new_status: 'syncing'
+      });
 
-    setEmailAccounts(prev => prev.map(acc => 
-      acc.id === accountId 
-        ? { ...acc, status: 'active', lastSync: new Date().toISOString() }
-        : acc
-    ));
+      // Simulate connection test
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Update to active status
+      const { error } = await supabase.rpc('update_email_account_status', {
+        user_uuid: user.id,
+        email_address: email,
+        new_status: 'active'
+      });
+
+      if (error) {
+        console.error('Error updating email status:', error);
+      }
+
+      setEmailAccounts(prev => prev.map(acc => 
+        acc.id === accountId 
+          ? { ...acc, status: 'active', lastSync: new Date().toISOString() }
+          : acc
+      ));
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      setEmailAccounts(prev => prev.map(acc => 
+        acc.id === accountId 
+          ? { ...acc, status: 'error' }
+          : acc
+      ));
+    }
   };
 
   const handleComplete = async () => {
@@ -179,8 +304,109 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading email setup...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
+      {/* Add Email Modal */}
+      {showAddEmailModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Add Email Account</h3>
+              <button
+                onClick={() => setShowAddEmailModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Provider
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setSelectedProvider('gmail')}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedProvider === 'gmail'
+                        ? 'border-red-300 bg-red-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {getProviderIcon('gmail')}
+                      <span className="ml-2 font-medium">Gmail</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedProvider('outlook')}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      selectedProvider === 'outlook'
+                        ? 'border-blue-300 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {getProviderIcon('outlook')}
+                      <span className="ml-2 font-medium">Outlook</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  placeholder={`Enter your ${selectedProvider} email address`}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddEmail()}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowAddEmailModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddEmail}
+                disabled={!emailInput.trim() || isConnecting}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
+                    Adding...
+                  </>
+                ) : (
+                  'Add Email'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -265,7 +491,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                         {showAdvanced && (
                           <>
                             <button
-                              onClick={() => testConnection(account.id)}
+                              onClick={() => testConnection(account.id, account.email)}
                               disabled={account.status === 'syncing'}
                               className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
                             >
@@ -277,7 +503,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                           </>
                         )}
                         <button
-                          onClick={() => removeEmailAccount(account.id)}
+                          onClick={() => removeEmailAccount(account.id, account.email)}
                           className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -303,7 +529,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                 ].map((email) => (
                   <button
                     key={email.provider}
-                    onClick={() => connectEmailAccount(email.provider)}
+                    onClick={() => handleAddEmailClick(email.provider)}
                     disabled={isConnecting}
                     className={`p-6 rounded-xl border-2 border-gray-200 hover:border-${email.color}-300 hover:bg-${email.color}-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left`}
                   >
@@ -315,31 +541,12 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                       </div>
                     </div>
                     
-                    {isConnecting && connectingProvider === email.provider ? (
-                      <div className="flex items-center text-blue-600 text-sm">
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Connecting...
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-600">
-                        Click to connect
-                      </div>
-                    )}
+                    <div className="text-sm text-gray-600">
+                      Click to add account
+                    </div>
                   </button>
                 ))}
               </div>
-              
-              {isConnecting && (
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center text-blue-800">
-                    <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                    <div>
-                      <div className="font-medium">Connecting to your email account...</div>
-                      <div className="text-sm text-blue-600">You'll be redirected to authorize FilePilot</div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -397,22 +604,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                   Revoke access anytime
                 </li>
               </ul>
-            </div>
-
-            {/* Supported Providers */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
-              <div className="flex items-center mb-4">
-                <Globe className="w-6 h-6 text-blue-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">Supported Providers</h3>
-              </div>
-              
-              <div className="space-y-2 text-sm text-blue-100">
-                <div>✓ Gmail & Google Workspace</div>
-                <div>✓ Outlook & Microsoft 365</div>
-                <div className="text-xs text-blue-200 mt-3">
-                  More providers coming soon
-                </div>
-              </div>
             </div>
           </div>
         </div>

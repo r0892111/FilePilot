@@ -43,6 +43,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           setMessage({ type: 'error', text: error.message });
         } else {
           setMessage({ type: 'success', text: 'Successfully logged in!' });
+          // Let the auth state change handler in App.tsx handle the redirect
           onSuccess();
         }
       } else {
@@ -58,6 +59,7 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           setMessage({ type: 'error', text: error.message });
         } else {
           setMessage({ type: 'success', text: 'Account created successfully!' });
+          // Let the auth state change handler in App.tsx handle the redirect
           onSuccess();
         }
       }

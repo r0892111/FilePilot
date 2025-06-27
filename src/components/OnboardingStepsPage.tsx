@@ -21,7 +21,9 @@ import {
   Edit3,
   Save,
   X,
-  ExternalLink
+  ExternalLink,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { EmailSetupPage } from './EmailSetupPage';
 import { FolderSetupPage } from './FolderSetupPage';
@@ -63,11 +65,18 @@ interface OnboardingStepsPageProps {
 }
 
 interface EditableSettings {
-  emailNotifications: boolean;
   autoOrganize: boolean;
-  folderStructure: 'date' | 'category' | 'sender';
+  selectedFolder: string;
   duplicateHandling: 'skip' | 'rename' | 'replace';
-  fileTypes: string[];
+  connectedEmails: string[];
+  subscriptionCanceled: boolean;
+}
+
+interface ConnectedEmail {
+  id: string;
+  email: string;
+  provider: 'gmail' | 'outlook';
+  status: 'active' | 'error';
 }
 
 export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsSubscribed, mode }: OnboardingStepsPageProps) {
@@ -83,12 +92,13 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   const [currentView, setCurrentView] = useState<'overview' | 'email' | 'folder'>('overview');
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [settingsJustSaved, setSettingsJustSaved] = useState(false);
   const [settings, setSettings] = useState<EditableSettings>({
-    emailNotifications: true,
     autoOrganize: true,
-    folderStructure: 'category',
+    selectedFolder: '/FilePilot/Documents',
     duplicateHandling: 'rename',
-    fileTypes: ['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'png']
+    connectedEmails: ['user@gmail.com', 'work@outlook.com'],
+    subscriptionCanceled: false
   });
   const [originalSettings, setOriginalSettings] = useState<EditableSettings>(settings);
 
@@ -98,6 +108,16 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   useEffect(() => {
     checkUserAndLoadData();
   }, []);
+
+  // Clear the "settings just saved" message after 5 seconds
+  useEffect(() => {
+    if (settingsJustSaved) {
+      const timer = setTimeout(() => {
+        setSettingsJustSaved(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [settingsJustSaved]);
 
   const checkUserAndLoadData = async () => {
     try {
@@ -172,11 +192,11 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     try {
       // Simulate loading user preferences
       const mockSettings: EditableSettings = {
-        emailNotifications: true,
         autoOrganize: true,
-        folderStructure: 'category',
+        selectedFolder: '/FilePilot/Documents',
         duplicateHandling: 'rename',
-        fileTypes: ['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'png']
+        connectedEmails: ['user@gmail.com', 'work@outlook.com'],
+        subscriptionCanceled: subscription?.cancel_at_period_end || false
       };
       setSettings(mockSettings);
       setOriginalSettings(mockSettings);
@@ -281,12 +301,39 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
       setIsEditMode(false);
       
       // Show success message
-      alert('Settings saved successfully!');
+      setSettingsJustSaved(true);
     } catch (error) {
       console.error('Error saving settings:', error);
       alert('Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRemoveEmail = (emailToRemove: string) => {
+    setSettings({
+      ...settings,
+      connectedEmails: settings.connectedEmails.filter(email => email !== emailToRemove)
+    });
+  };
+
+  const handleAddEmail = () => {
+    // In a real app, this would open an email connection flow
+    const newEmail = prompt('Enter email address to connect:');
+    if (newEmail && !settings.connectedEmails.includes(newEmail)) {
+      setSettings({
+        ...settings,
+        connectedEmails: [...settings.connectedEmails, newEmail]
+      });
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (confirm('Are you sure you want to cancel your subscription? It will remain active until the end of your billing period.')) {
+      setSettings({
+        ...settings,
+        subscriptionCanceled: true
+      });
     }
   };
 
@@ -480,95 +527,126 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
         {/* Settings Panel (only in manage mode) */}
         {mode === 'manage' && isEditMode && (
           <div className="bg-white rounded-2xl p-8 shadow-xl border border-gray-200 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Preferences</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Manage Settings</h2>
             
-            <div className="grid md:grid-cols-2 gap-8">
-              {/* General Settings */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">General Settings</h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Email Notifications</label>
-                      <p className="text-xs text-gray-500">Receive updates about document processing</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.emailNotifications}
-                      onChange={(e) => setSettings({...settings, emailNotifications: e.target.checked})}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
+            <div className="space-y-8">
+              {/* Auto-organize Setting */}
+              <div className="border-b border-gray-200 pb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Auto-organize</h3>
+                    <p className="text-sm text-gray-600">Automatically organize new email attachments</p>
                   </div>
-                  
+                  <input
+                    type="checkbox"
+                    checked={settings.autoOrganize}
+                    onChange={(e) => setSettings({...settings, autoOrganize: e.target.checked})}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Selected Folder */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Organization Folder</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Auto-organize</label>
-                      <p className="text-xs text-gray-500">Automatically organize new attachments</p>
+                      <p className="font-medium text-gray-900">{settings.selectedFolder}</p>
+                      <p className="text-sm text-gray-600">Current organization folder</p>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.autoOrganize}
-                      onChange={(e) => setSettings({...settings, autoOrganize: e.target.checked})}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
+                    <button
+                      onClick={() => setCurrentView('folder')}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      Change Folder
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Organization Settings */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Organization</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Folder Structure</label>
-                    <select
-                      value={settings.folderStructure}
-                      onChange={(e) => setSettings({...settings, folderStructure: e.target.value as any})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="category">By Category</option>
-                      <option value="date">By Date</option>
-                      <option value="sender">By Sender</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Duplicate Handling</label>
-                    <select
-                      value={settings.duplicateHandling}
-                      onChange={(e) => setSettings({...settings, duplicateHandling: e.target.value as any})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="skip">Skip duplicates</option>
-                      <option value="rename">Rename duplicates</option>
-                      <option value="replace">Replace existing</option>
-                    </select>
-                  </div>
+              {/* Duplicate Handling */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Duplicate Handling</h3>
+                <select
+                  value={settings.duplicateHandling}
+                  onChange={(e) => setSettings({...settings, duplicateHandling: e.target.value as any})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="skip">Skip duplicates</option>
+                  <option value="rename">Rename duplicates</option>
+                  <option value="replace">Replace existing</option>
+                </select>
+                <p className="text-sm text-gray-600 mt-2">How to handle duplicate files when organizing</p>
+              </div>
+
+              {/* Connected Emails */}
+              <div className="border-b border-gray-200 pb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Connected Email Accounts</h3>
+                  <button
+                    onClick={handleAddEmail}
+                    className="flex items-center text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Email
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {settings.connectedEmails.map((email, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center">
+                        <Mail className="w-5 h-5 text-gray-400 mr-3" />
+                        <span className="text-gray-900">{email}</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveEmail(email)}
+                        className="text-red-600 hover:text-red-700 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {settings.connectedEmails.length === 0 && (
+                    <p className="text-gray-500 text-sm">No email accounts connected</p>
+                  )}
                 </div>
               </div>
-            </div>
 
-            {/* File Types */}
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Supported File Types</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {['pdf', 'docx', 'xlsx', 'pptx', 'jpg', 'png', 'txt', 'zip'].map((type) => (
-                  <label key={type} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.fileTypes.includes(type)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSettings({...settings, fileTypes: [...settings.fileTypes, type]});
-                        } else {
-                          setSettings({...settings, fileTypes: settings.fileTypes.filter(t => t !== type)});
+              {/* Subscription Management */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Subscription</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {subscription?.cancel_at_period_end ? 'Subscription Canceling' : 'Active Subscription'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {subscription?.cancel_at_period_end 
+                          ? 'Your subscription will end at the current billing period'
+                          : 'Manage your billing and subscription settings'
                         }
-                      }}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 mr-2"
-                    />
-                    <span className="text-sm text-gray-700 uppercase">{type}</span>
-                  </label>
-                ))}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleStepAction('payment')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Manage Billing
+                      </button>
+                      {!subscription?.cancel_at_period_end && (
+                        <button
+                          onClick={handleCancelSubscription}
+                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -662,20 +740,35 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
 
         {/* Action Buttons */}
         <div className="text-center">
-          {allStepsCompleted ? (
+          {settingsJustSaved ? (
             <div className="space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
                 <div className="flex items-center justify-center mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-                  <h3 className="text-lg font-semibold text-green-900">
-                    {mode === 'manage' ? 'Settings Updated' : 'Setup Complete!'}
-                  </h3>
+                  <h3 className="text-lg font-semibold text-green-900">Settings Updated!</h3>
                 </div>
                 <p className="text-green-700">
-                  {mode === 'manage' 
-                    ? 'Your account settings have been updated successfully.'
-                    : 'FilePilot is now monitoring your email and organizing attachments automatically.'
-                  }
+                  Your account settings have been saved successfully.
+                </p>
+              </div>
+              
+              <button
+                onClick={() => window.location.href = '/dashboard'}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center mx-auto"
+              >
+                Go to Dashboard
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </button>
+            </div>
+          ) : allStepsCompleted && mode !== 'manage' ? (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 mb-6">
+                <div className="flex items-center justify-center mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+                  <h3 className="text-lg font-semibold text-green-900">Setup Complete!</h3>
+                </div>
+                <p className="text-green-700">
+                  FilePilot is now monitoring your email and organizing attachments automatically.
                 </p>
               </div>
               
@@ -703,7 +796,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                 Choose Your Plan
               </button>
             </div>
-          ) : (
+          ) : mode !== 'manage' ? (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
               <div className="flex items-center justify-center mb-4">
                 <Clock className="w-8 h-8 text-blue-600 mr-3" />
@@ -713,7 +806,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                 Complete the remaining steps to start organizing your email attachments.
               </p>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Security Notice */}

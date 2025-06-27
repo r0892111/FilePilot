@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   FileText, 
-  Upload,
   Activity,
   TrendingUp,
   Clock,
@@ -490,22 +489,6 @@ export function Dashboard() {
 
         {/* Action Cards */}
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Quick Upload</h3>
-              <Upload className="w-6 h-6" />
-            </div>
-            <p className="text-blue-100 mb-4">
-              Drag and drop files or browse to upload documents for automatic organization.
-            </p>
-            <button 
-              onClick={() => window.location.href = '/upload'}
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
-            >
-              Upload Files
-            </button>
-          </div>
-
           <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Account Settings</h3>
@@ -523,6 +506,23 @@ export function Dashboard() {
             >
               {setupComplete ? 'Manage Settings' : 'Complete Setup'}
             </button>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-xl p-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">AI Processing</h3>
+              <Zap className="w-6 h-6" />
+            </div>
+            <p className="text-green-100 mb-4">
+              {setupComplete 
+                ? "Your AI assistant is actively organizing email attachments."
+                : "Set up your accounts to enable AI document processing."
+              }
+            </p>
+            <div className="flex items-center text-green-200">
+              <div className={`w-2 h-2 rounded-full mr-2 ${setupComplete ? 'bg-green-300 animate-pulse' : 'bg-green-400'}`}></div>
+              <span className="text-sm font-medium">{setupComplete ? 'Active' : 'Waiting for setup'}</span>
+            </div>
           </div>
         </div>
 
@@ -615,29 +615,6 @@ export function Dashboard() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          </div>
-        )}
-
-        {/* AI Processing Status */}
-        {setupComplete && (
-          <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                  <Zap className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">AI Processing Active</h3>
-                  <p className="text-gray-600">
-                    FilePilot is continuously monitoring your email for new attachments to organize.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center text-green-600">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                <span className="text-sm font-medium">Live</span>
-              </div>
             </div>
           </div>
         )}

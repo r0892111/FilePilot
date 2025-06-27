@@ -22,7 +22,6 @@ import { stripeProducts } from "./stripe-config";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
 import { IntegrationSlider } from "./components/IntegrationSlider";
 import { OnboardingFlow } from "./components/OnboardingFlow";
-import { OnboardingStepsPage } from "./components/OnboardingStepsPage";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -55,7 +54,6 @@ function App() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showStepsPage, setShowStepsPage] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
@@ -186,22 +184,10 @@ function App() {
         <OnboardingFlow
           onComplete={() => {
             setShowOnboarding(false);
-            setShowStepsPage(true);
+            // After payment completion, redirect to success page
+            window.location.href = "/success";
           }}
           onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
-      {/* Steps Page */}
-      {showStepsPage && (
-        <OnboardingStepsPage
-          onComplete={() => {
-            setShowStepsPage(false);
-            window.location.href = "/dashboard";
-          }}
-          onClose={() => setShowStepsPage(false)}
-          isSubscribed={hasActiveSubscription || false}
-          mode="setup"
         />
       )}
 
@@ -393,6 +379,7 @@ function App() {
           </div>
         </div>
       </section>
+
       {/* How It Works */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -462,6 +449,79 @@ function App() {
           </div>
         </div>
       </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Choose Your Plan
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              Start organizing your documents today with our flexible pricing options
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {stripeProducts.map((product, index) => (
+              <div
+                key={product.id}
+                className={`rounded-2xl p-8 border-2 transition-all duration-300 hover:shadow-xl ${
+                  index === 1
+                    ? 'border-blue-500 bg-blue-50 shadow-lg scale-105 relative'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {index === 1 && (
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                      <Star className="w-4 h-4 inline mr-1" />
+                      Most Popular
+                    </div>
+                  </div>
+                )}
+                
+                <div className="text-center mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">{product.name}</h3>
+                  <div className="text-4xl font-bold text-gray-900 mb-2">{product.price}</div>
+                  <div className="text-gray-500 mb-4">per {product.interval}</div>
+                  
+                  {index === 1 && (
+                    <div className="text-sm text-green-600 font-medium mb-4">Save 2 months!</div>
+                  )}
+                </div>
+                
+                <ul className="space-y-4 mb-8">
+                  {product.features.map((feature, featureIndex) => (
+                    <li key={featureIndex} className="flex items-center">
+                      <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                      <span className="text-gray-600">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                
+                <button
+                  onClick={() => {
+                    if (!user) {
+                      window.location.href = "/signup";
+                    } else {
+                      setShowOnboarding(true);
+                    }
+                  }}
+                  className={`w-full py-4 px-6 rounded-lg font-semibold transition-colors ${
+                    index === 1
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-900 hover:bg-gray-800 text-white'
+                  }`}
+                >
+                  {user ? 'Get Started' : 'Sign Up & Get Started'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Integration Slider Section */}
       <section className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

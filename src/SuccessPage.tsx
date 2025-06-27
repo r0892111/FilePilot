@@ -35,13 +35,12 @@ function SuccessPage() {
         setUser(session.user);
 
         // Mark payment as completed in onboarding steps
-
         await updatePaymentStep(session.user.id);
 
         // Redirect to steps page after a short delay
         setTimeout(() => {
           window.location.href = "/steps";
-        }, 2000);
+        }, 3000);
       } else {
         // Redirect to login if not authenticated
         window.location.href = "/login";
@@ -56,20 +55,18 @@ function SuccessPage() {
 
   const updatePaymentStep = async (userId: string) => {
     try {
-      // Always insert a new record for the customer
-      const { error } = await supabase.from("onboarding_steps").insert([
-        {
-          user_uuid: userId,
-          step_name: "payment",
-          completed: true,
-        },
-      ]);
+      // Update payment step as completed
+      const { error } = await supabase.rpc('update_onboarding_step', {
+        user_uuid: userId,
+        step_name: 'payment',
+        completed: true
+      });
 
       if (error) {
-        console.error("Error inserting onboarding step:", error);
+        console.error("Error updating payment step:", error);
       }
     } catch (error) {
-      console.error("Error inserting payment step:", error);
+      console.error("Error updating payment step:", error);
     }
   };
 

@@ -46,12 +46,20 @@ interface SubscriptionData {
   cancel_at_period_end: boolean;
 }
 
+interface OnboardingStepsData {
+  payment_completed: boolean;
+  email_connected: boolean;
+  folder_selected: boolean;
+  onboarding_completed: boolean;
+}
+
 function App() {
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
     null
   );
+  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -69,10 +77,11 @@ function App() {
           email: session.user.email || "",
           user_metadata: session.user.user_metadata,
         });
-        checkSubscription(session.user.id);
+        checkSubscriptionAndOnboarding(session.user.id);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
         setSubscription(null);
+        setOnboardingSteps(null);
       }
     });
 
@@ -90,7 +99,7 @@ function App() {
           email: session.user.email || "",
           user_metadata: session.user.user_metadata,
         });
-        await checkSubscription(session.user.id);
+        await checkSubscriptionAndOnboarding(session.user.id);
       }
     } catch (error) {
       console.error("Error checking user:", error);
@@ -99,27 +108,47 @@ function App() {
     }
   };
 
-  const checkSubscription = async (userId: string) => {
+  const checkSubscriptionAndOnboarding = async (userId: string) => {
     try {
-      const { data: subscriptionData, error } = await supabase
+      // Check subscription status
+      const { data: subscriptionData, error: subError } = await supabase
         .from("stripe_user_subscriptions")
         .select(
           "subscription_status, price_id, current_period_end, cancel_at_period_end"
         )
         .maybeSingle();
 
-      if (error) {
-        console.error("Error fetching subscription:", error);
+      if (subError) {
+        console.error("Error fetching subscription:", subError);
       } else {
         setSubscription(subscriptionData);
-        
-        // If user has active subscription, redirect to steps page
-        if (subscriptionData && subscriptionData.subscription_status === 'active') {
+      }
+
+      // Check onboarding steps
+      const { data: stepsData, error: stepsError } = await supabase
+        .from("user_onboarding_steps")
+        .select("payment_completed, email_connected, folder_selected, onboarding_completed")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (stepsError && stepsError.code !== 'PGRST116') {
+        console.error("Error fetching onboarding steps:", stepsError);
+      } else {
+        setOnboardingSteps(stepsData);
+      }
+
+      // Handle redirects based on subscription and onboarding status
+      if (subscriptionData && subscriptionData.subscription_status === 'active') {
+        if (stepsData && stepsData.onboarding_completed) {
+          // All steps completed - redirect to dashboard
+          window.location.href = '/dashboard';
+        } else {
+          // Has subscription but steps not completed - redirect to steps
           window.location.href = '/steps';
         }
       }
     } catch (error) {
-      console.error("Error checking subscription:", error);
+      console.error("Error checking subscription and onboarding:", error);
     }
   };
 
@@ -127,6 +156,7 @@ function App() {
     await supabase.auth.signOut();
     setUser(null);
     setSubscription(null);
+    setOnboardingSteps(null);
   };
 
   const scrollToPricing = () => {
@@ -145,8 +175,14 @@ function App() {
 
     // Check if user has active subscription
     if (subscription && subscription.subscription_status === "active") {
-      // User has subscription, go to steps page
-      window.location.href = "/steps";
+      // Check onboarding completion
+      if (onboardingSteps && onboardingSteps.onboarding_completed) {
+        // User has subscription and completed onboarding - go to dashboard
+        window.location.href = "/dashboard";
+      } else {
+        // User has subscription but needs to complete steps
+        window.location.href = "/steps";
+      }
     } else {
       // User needs to subscribe, show onboarding flow
       setShowOnboarding(true);
@@ -173,6 +209,8 @@ function App() {
 
   const hasActiveSubscription =
     subscription && subscription.subscription_status === "active";
+
+  const allStepsCompleted = onboardingSteps && onboardingSteps.onboarding_completed;
 
   if (isLoading) {
     return (
@@ -220,13 +258,22 @@ function App() {
                     <SubscriptionStatus />
                   </div>
                   <div className="flex items-center space-x-4">
-                    {hasActiveSubscription && (
+                    {hasActiveSubscription && allStepsCompleted && (
                       <a
                         href="/dashboard"
                         className="flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
                       >
                         <LayoutDashboard className="w-4 h-4 mr-1" />
                         Dashboard
+                      </a>
+                    )}
+                    {hasActiveSubscription && !allStepsCompleted && (
+                      <a
+                        href="/steps"
+                        className="flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
+                      >
+                        <Settings className="w-4 h-4 mr-1" />
+                        Complete Setup
                       </a>
                     )}
                     <div className="flex items-center text-white">
@@ -296,10 +343,15 @@ function App() {
                   onClick={handleGetStarted}
                   className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
                 >
-                  {hasActiveSubscription ? (
+                  {hasActiveSubscription && allStepsCompleted ? (
                     <>
                       <LayoutDashboard className="w-5 h-5 mr-2" />
                       Go to Dashboard
+                    </>
+                  ) : hasActiveSubscription && !allStepsCompleted ? (
+                    <>
+                      <Settings className="w-5 h-5 mr-2" />
+                      Complete Setup
                     </>
                   ) : (
                     <>Get Started Now</>

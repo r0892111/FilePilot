@@ -20,6 +20,7 @@ import {
   Target,
   AlertTriangle
 } from 'lucide-react';
+import { fetchGoogleDriveFolders } from '../api/googleDrive/driveApi';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -108,7 +109,7 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
           ]
         }
       ];
-      
+      fetchGoogleDriveFolders((await supabase.auth.getSession()).data.session?.provider_token || '')
       setDriveFolders(mockFolders);
     } catch (error) {
       console.error('Error loading folders:', error);

@@ -19,8 +19,8 @@ import {
   EyeOff,
   X,
   Info,
-  ExternalLink
-} from 'lucide-react';
+  ExternalLink,
+} from "lucide-react";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -30,7 +30,7 @@ const supabase = createClient(
 interface EmailAccount {
   id: string;
   email: string;
-  provider: 'gmail';
+  provider: "gmail";
   connected: boolean;
   lastSync?: string;
   status: "active" | "error" | "syncing";
@@ -78,29 +78,29 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     try {
       const { data, error } = await supabase
-        .from('user_email_accounts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('provider', 'gmail')
-        .order('created_at', { ascending: false });
+        .from("user_email_accounts")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("provider", "gmail")
+        .order("created_at", { ascending: false });
 
       if (error) {
-        console.error('Error loading email accounts:', error);
+        console.error("Error loading email accounts:", error);
         return;
       }
 
-      const accounts: EmailAccount[] = (data || []).map(account => ({
+      const accounts: EmailAccount[] = (data || []).map((account) => ({
         id: account.id.toString(),
         email: account.email,
-        provider: 'gmail',
+        provider: "gmail",
         connected: true,
         lastSync: account.last_sync,
-        status: account.status as 'active' | 'error' | 'syncing'
+        status: account.status as "active" | "error" | "syncing",
       }));
 
       setEmailAccounts(accounts);
     } catch (error) {
-      console.error('Error loading email accounts:', error);
+      console.error("Error loading email accounts:", error);
     }
   };
 
@@ -110,18 +110,19 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     setIsConnecting(true);
 
     try {
-      console.log('Initiating Gmail OAuth for email monitoring...');
-      
+      console.log("Initiating Gmail OAuth for email monitoring...");
+
       // Get the current origin for redirect
       const redirectTo = `${window.location.origin}/steps`;
-      
-      console.log('Redirect URL:', redirectTo);
-      
+
+      console.log("Redirect URL:", redirectTo);
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: redirectTo,
-          scopes: "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email",
+          scopes:
+            "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email",
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -129,18 +130,27 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
-      console.log('OAuth response:', data);
+      // Inside handleConnectGmail, after a successful OAuth initiation:
+
+      await supabase
+        .from("user_onboarding_steps")
+        .update({ email_connected: true })
+        .eq("user_id", user.id);
+
+      console.log("OAuth response:", data);
 
       if (error) {
-        console.error('OAuth error:', error);
+        console.error("OAuth error:", error);
         alert(`Gmail authentication failed: ${error.message}`);
       } else {
-        console.log('OAuth initiated successfully');
+        console.log("OAuth initiated successfully");
         // The redirect will happen automatically
       }
     } catch (error: any) {
-      console.error('Unexpected OAuth error:', error);
-      alert(`Failed to authenticate with Gmail: ${error.message || 'Unknown error'}`);
+      console.error("Unexpected OAuth error:", error);
+      alert(
+        `Failed to authenticate with Gmail: ${error.message || "Unknown error"}`
+      );
     } finally {
       setIsConnecting(false);
     }
@@ -154,73 +164,77 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     try {
-      const { error } = await supabase.rpc('remove_user_email_account', {
+      const { error } = await supabase.rpc("remove_user_email_account", {
         user_uuid: user.id,
-        email_address: email
+        email_address: email,
       });
 
       if (error) {
-        console.error('Error removing email account:', error);
-        alert('Failed to remove email account. Please try again.');
+        console.error("Error removing email account:", error);
+        alert("Failed to remove email account. Please try again.");
         return;
       }
 
-      setEmailAccounts(prev => prev.filter(acc => acc.id !== accountId));
+      setEmailAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
     } catch (error) {
-      console.error('Error removing email account:', error);
-      alert('An error occurred while removing the email account. Please try again.');
+      console.error("Error removing email account:", error);
+      alert(
+        "An error occurred while removing the email account. Please try again."
+      );
     }
   };
 
   const testConnection = async (accountId: string, email: string) => {
     if (!user) return;
 
-    setEmailAccounts(prev => prev.map(acc => 
-      acc.id === accountId 
-        ? { ...acc, status: 'syncing' }
-        : acc
-    ));
+    setEmailAccounts((prev) =>
+      prev.map((acc) =>
+        acc.id === accountId ? { ...acc, status: "syncing" } : acc
+      )
+    );
 
     try {
       // Update status to syncing in database
-      await supabase.rpc('update_email_account_status', {
+      await supabase.rpc("update_email_account_status", {
         user_uuid: user.id,
         email_address: email,
-        new_status: 'syncing'
+        new_status: "syncing",
       });
 
       // Simulate connection test
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Update to active status
-      const { error } = await supabase.rpc('update_email_account_status', {
+      const { error } = await supabase.rpc("update_email_account_status", {
         user_uuid: user.id,
         email_address: email,
-        new_status: 'active'
+        new_status: "active",
       });
 
       if (error) {
-        console.error('Error updating email status:', error);
+        console.error("Error updating email status:", error);
       }
 
-      setEmailAccounts(prev => prev.map(acc => 
-        acc.id === accountId 
-          ? { ...acc, status: 'active', lastSync: new Date().toISOString() }
-          : acc
-      ));
+      setEmailAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === accountId
+            ? { ...acc, status: "active", lastSync: new Date().toISOString() }
+            : acc
+        )
+      );
     } catch (error) {
-      console.error('Error testing connection:', error);
-      setEmailAccounts(prev => prev.map(acc => 
-        acc.id === accountId 
-          ? { ...acc, status: 'error' }
-          : acc
-      ));
+      console.error("Error testing connection:", error);
+      setEmailAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === accountId ? { ...acc, status: "error" } : acc
+        )
+      );
     }
   };
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
-      alert('Please connect at least one Gmail account to continue.');
+      alert("Please connect at least one Gmail account to continue.");
       return;
     }
 
@@ -230,7 +244,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       // Update the email step as completed
       const { error } = await supabase.rpc("update_onboarding_step", {
         user_uuid: user.id,
-        step_name: "email",
+        step_name: "",
         completed: true,
       });
 
@@ -311,7 +325,8 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
           </h1>
 
           <p className="text-xl text-blue-100 mb-6">
-            Connect your Gmail account to monitor email attachments for automatic organization
+            Connect your Gmail account to monitor email attachments for
+            automatic organization
           </p>
 
           <div className="inline-flex items-center px-4 py-2 bg-blue-500/20 rounded-full border border-blue-400/30 text-blue-200 text-sm">
@@ -380,8 +395,10 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                         {showAdvanced && (
                           <>
                             <button
-                              onClick={() => testConnection(account.id, account.email)}
-                              disabled={account.status === 'syncing'}
+                              onClick={() =>
+                                testConnection(account.id, account.email)
+                              }
+                              disabled={account.status === "syncing"}
                               className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
                             >
                               <RefreshCw
@@ -398,7 +415,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                           </>
                         )}
                         <button
-                          onClick={() => removeEmailAccount(account.id, account.email)}
+                          onClick={() =>
+                            removeEmailAccount(account.id, account.email)
+                          }
                           className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -414,7 +433,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             <div className="bg-white rounded-2xl p-8 shadow-xl">
               <div className="flex items-center mb-6">
                 <Plus className="w-6 h-6 text-blue-600 mr-3" />
-                <h2 className="text-xl font-bold text-gray-900">Connect Gmail Account</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Connect Gmail Account
+                </h2>
               </div>
 
               {/* Important Notice */}
@@ -422,18 +443,27 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                 <div className="flex items-start">
                   <Info className="w-5 h-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-2">Important: Email Account Selection</h3>
+                    <h3 className="font-semibold text-blue-900 mb-2">
+                      Important: Email Account Selection
+                    </h3>
                     <p className="text-sm text-blue-800 mb-3">
-                      When you click "Connect Gmail", you'll be redirected to Google's authentication page. 
-                      <strong> Please carefully select the Gmail account you want FilePilot to monitor for attachments.</strong>
+                      When you click "Connect Gmail", you'll be redirected to
+                      Google's authentication page.
+                      <strong>
+                        {" "}
+                        Please carefully select the Gmail account you want
+                        FilePilot to monitor for attachments.
+                      </strong>
                     </p>
                     <p className="text-sm text-blue-700">
-                      The email account you choose during the Google OAuth flow will be the one that FilePilot analyzes for email attachments.
+                      The email account you choose during the Google OAuth flow
+                      will be the one that FilePilot analyzes for email
+                      attachments.
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="max-w-md">
                 <button
                   onClick={handleConnectGmail}
@@ -444,10 +474,12 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                     {getProviderIcon()}
                     <div className="ml-3">
                       <div className="font-semibold text-gray-900">Gmail</div>
-                      <div className="text-sm text-gray-500">Google Workspace & Gmail</div>
+                      <div className="text-sm text-gray-500">
+                        Google Workspace & Gmail
+                      </div>
                     </div>
                   </div>
-                  
+
                   {isConnecting ? (
                     <div className="flex items-center text-blue-600 text-sm">
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -461,14 +493,16 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                   )}
                 </button>
               </div>
-              
+
               {isConnecting && (
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center text-blue-800">
                     <Loader2 className="w-5 h-5 mr-3 animate-spin" />
                     <div>
                       <div className="font-medium">Connecting to Gmail...</div>
-                      <div className="text-sm text-blue-600">You'll be redirected to Google to authorize FilePilot</div>
+                      <div className="text-sm text-blue-600">
+                        You'll be redirected to Google to authorize FilePilot
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -542,7 +576,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                 <ExternalLink className="w-6 h-6 text-blue-400 mr-3" />
                 <h3 className="text-lg font-semibold text-white">OAuth Flow</h3>
               </div>
-              
+
               <div className="space-y-2 text-sm text-blue-100">
                 <div>1. Click "Connect Gmail"</div>
                 <div>2. Choose your Gmail account</div>

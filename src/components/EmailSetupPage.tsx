@@ -23,7 +23,6 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
-import { triggerCompleteSetupWebhook } from "../api/webhooks";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -80,7 +79,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   useEffect(() => {
     if (user) {
       loadEmailAccounts();
-      checkForOAuthReturn();
     }
   }, [user]);
 
@@ -96,75 +94,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       console.error("Error checking user:", error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const checkForOAuthReturn = async () => {
-    // Check if we're returning from OAuth flow
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasOAuthParams = urlParams.has('code') || urlParams.has('access_token');
-    
-    if (hasOAuthParams) {
-      console.log("Detected OAuth return, processing...");
-      
-      // Get the current session to check for provider token
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.provider_token) {
-        console.log("OAuth successful, updating email connection status");
-        
-        // Get stored date range from localStorage
-        const storedDateRange = localStorage.getItem('filepilot_date_range') || '30';
-        const storedCustomDate = localStorage.getItem('filepilot_custom_date') || '';
-        
-        // Clean up localStorage
-        localStorage.removeItem('filepilot_date_range');
-        localStorage.removeItem('filepilot_custom_date');
-        
-        try {
-          // Add the email account to database
-          const { error: insertError } = await supabase
-            .from("user_email_accounts")
-            .insert([
-              {
-                user_id: user.id,
-                email: user.email,
-                provider: "gmail",
-                status: "active",
-                email_history: storedDateRange === 'custom' ? storedCustomDate : storedDateRange,
-              },
-            ]);
-
-          if (insertError) {
-            console.error("Error inserting email account:", insertError);
-          } else {
-            console.log("Email account added successfully");
-            
-            // Now mark email_connected as true
-            const { error: updateError } = await supabase
-              .from("user_onboarding_steps")
-              .update({ email_connected: true })
-              .eq("user_id", user.id);
-
-            if (updateError) {
-              console.error("Error updating email_connected status:", updateError);
-            } else {
-              console.log("Email connection status updated successfully");
-              
-              // Trigger webhook
-              await triggerCompleteSetupWebhook(user.id, user.email, "google", "completed");
-              
-              // Reload email accounts to show the new one
-              await loadEmailAccounts();
-            }
-          }
-        } catch (error) {
-          console.error("Error processing OAuth return:", error);
-        }
-        
-        // Clean up URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
     }
   };
 
@@ -191,7 +120,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         connected: true,
         lastSync: account.last_sync,
         status: account.status as "active" | "error" | "syncing",
-        dateRange: account.email_history || "30",
+        dateRange: account.date_range || "30",
       }));
 
       setEmailAccounts(accounts);
@@ -233,16 +162,20 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     setIsConnecting(true);
 
+    await supabase.from("user_email_accounts").insert([
+      {
+        user_id: user.id, // UUID of the user
+        email: user.email, // The email address to add
+        provider: "gmail", // "gmail" or "outlook"
+        status: "active", // "active", "error", or "syncing"
+        email_history: selectedDateRange, // Store the selected date range
+      },
+    ]);
+
     try {
       console.log("Initiating Gmail OAuth for email monitoring...");
 
-      // Store date range in localStorage for after OAuth return
-      localStorage.setItem('filepilot_date_range', selectedDateRange);
-      if (selectedDateRange === 'custom' && customDate) {
-        localStorage.setItem('filepilot_custom_date', customDate);
-      }
-
-      // Get the current origin for redirect - stay on email setup page
+      // Get the current origin for redirect
       const redirectTo = `${window.location.origin}/steps`;
 
       console.log("Redirect URL:", redirectTo);
@@ -260,14 +193,17 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
+      await supabase
+        .from("user_onboarding_steps")
+        .update({ email_connected: true })
+        .eq("user_id", user.id);
+
+     
       console.log("OAuth response:", data);
 
       if (error) {
         console.error("OAuth error:", error);
         alert(`Gmail authentication failed: ${error.message}`);
-        // Clean up localStorage on error
-        localStorage.removeItem('filepilot_date_range');
-        localStorage.removeItem('filepilot_custom_date');
       } else {
         console.log("OAuth initiated successfully");
         // The redirect will happen automatically
@@ -277,9 +213,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       alert(
         `Failed to authenticate with Gmail: ${error.message || "Unknown error"}`
       );
-      // Clean up localStorage on error
-      localStorage.removeItem('filepilot_date_range');
-      localStorage.removeItem('filepilot_custom_date');
     } finally {
       setIsConnecting(false);
     }
@@ -293,11 +226,10 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     try {
-      const { error } = await supabase
-        .from("user_email_accounts")
-        .delete()
-        .eq("id", accountId)
-        .eq("user_id", user.id);
+      const { error } = await supabase.rpc("remove_user_email_account", {
+        user_uuid: user.id,
+        email_address: email,
+      });
 
       if (error) {
         console.error("Error removing email account:", error);
@@ -306,15 +238,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       }
 
       setEmailAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
-      
-      // If no email accounts left, set email_connected to false
-      const remainingAccounts = emailAccounts.filter((acc) => acc.id !== accountId);
-      if (remainingAccounts.length === 0) {
-        await supabase
-          .from("user_onboarding_steps")
-          .update({ email_connected: false })
-          .eq("user_id", user.id);
-      }
     } catch (error) {
       console.error("Error removing email account:", error);
       alert(
@@ -334,24 +257,21 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     try {
       // Update status to syncing in database
-      await supabase
-        .from("user_email_accounts")
-        .update({ status: "syncing" })
-        .eq("id", accountId)
-        .eq("user_id", user.id);
+      await supabase.rpc("update_email_account_status", {
+        user_uuid: user.id,
+        email_address: email,
+        new_status: "syncing",
+      });
 
       // Simulate connection test
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Update to active status
-      const { error } = await supabase
-        .from("user_email_accounts")
-        .update({ 
-          status: "active",
-          last_sync: new Date().toISOString()
-        })
-        .eq("id", accountId)
-        .eq("user_id", user.id);
+      const { error } = await supabase.rpc("update_email_account_status", {
+        user_uuid: user.id,
+        email_address: email,
+        new_status: "active",
+      });
 
       if (error) {
         console.error("Error updating email status:", error);
@@ -373,6 +293,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     }
   };
+  useEffect(() => {
+    console.log(selectedDateRange);
+  }, [selectedDateRange]);
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
@@ -381,6 +304,21 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     if (!user) return;
+
+    if (selectedDateRange === "custom" && customDate) {
+      // If custom date is selected, use it
+      const customDateConverted = new Date(customDate);
+      setSelectedDateRange(customDateConverted.toISOString());
+    }
+    if (selectedDateRange === "all") {
+      setSelectedDateRange("2004-04-01T00:00:00.000Z");
+    } else {
+      // Otherwise, use the selected range
+      const days = parseInt(selectedDateRange, 10);
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      setSelectedDateRange(date.toISOString());
+    }
 
     try {
       onComplete();

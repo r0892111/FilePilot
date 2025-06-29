@@ -63,3 +63,15 @@ export const fetchGoogleDriveFolders = async (accessToken: string) => {
         return [];
     }
 };
+
+export const fetchGoogleDriveStorageQuota = async (accessToken: string) => {
+    const url = "https://www.googleapis.com/drive/v3/about?fields=storageQuota";
+    const response = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+        },
+    });
+    console.log('fetch drive storage quota:', response);
+    if (!response.ok) throw new Error("Failed to fetch storage quota");
+    return await response.json();
+};

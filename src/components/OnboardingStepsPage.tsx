@@ -86,6 +86,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     folder_selected: false,
     onboarding_completed: false
   });
+  
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'overview' | 'email' | 'folder'>('overview');

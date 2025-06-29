@@ -122,7 +122,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         options: {
           redirectTo: redirectTo,
           scopes:
-            "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive",
           queryParams: {
             access_type: "offline",
             prompt: "consent",
@@ -136,6 +136,16 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         .from("user_onboarding_steps")
         .update({ email_connected: true })
         .eq("user_id", user.id);
+
+      await supabase.from("user_email_accounts").insert([
+        {
+          user_id: user.id, // UUID of the user
+          email: user.email, // The email address to add
+          provider: "gmail", // "gmail" or "outlook"
+          status: "active", // "active", "error", or "syncing"
+          // connected_at, last_sync, created_at, updated_at will use defaults if omitted
+        },
+      ]);
 
       console.log("OAuth response:", data);
 

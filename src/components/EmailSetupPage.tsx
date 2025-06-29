@@ -60,8 +60,16 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     { value: "90", label: "Last 3 months", description: "Quarterly review" },
     { value: "180", label: "Last 6 months", description: "Half-year analysis" },
     { value: "365", label: "Last year", description: "Full year review" },
-    { value: "all", label: "All emails", description: "Complete email history" },
-    { value: "custom", label: "Custom date", description: "Choose specific date" },
+    {
+      value: "all",
+      label: "All emails",
+      description: "Complete email history",
+    },
+    {
+      value: "custom",
+      label: "Custom date",
+      description: "Choose specific date",
+    },
   ];
 
   useEffect(() => {
@@ -123,21 +131,23 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
   const getDateRangeDescription = (range: string) => {
     if (range === "custom") {
-      return customDate ? `Since ${new Date(customDate).toLocaleDateString()}` : "Choose date";
+      return customDate
+        ? `Since ${new Date(customDate).toLocaleDateString()}`
+        : "Choose date";
     }
-    const option = dateRangeOptions.find(opt => opt.value === range);
+    const option = dateRangeOptions.find((opt) => opt.value === range);
     return option ? option.description : "Unknown range";
   };
 
   const getEstimatedEmailCount = (range: string) => {
     const estimates = {
       "7": "~50-200 emails",
-      "30": "~200-800 emails", 
+      "30": "~200-800 emails",
       "90": "~600-2,400 emails",
       "180": "~1,200-4,800 emails",
       "365": "~2,500-10,000 emails",
-      "all": "~5,000+ emails",
-      "custom": customDate ? "Varies by date" : "Select date first"
+      all: "~5,000+ emails",
+      custom: customDate ? "Varies by date" : "Select date first",
     };
     return estimates[range as keyof typeof estimates] || "Unknown";
   };
@@ -174,9 +184,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       });
 
       // Store the date range preference for when the user returns
-      localStorage.setItem('gmail_date_range', selectedDateRange);
+      localStorage.setItem("gmail_date_range", selectedDateRange);
       if (selectedDateRange === "custom" && customDate) {
-        localStorage.setItem('gmail_custom_date', customDate);
+        localStorage.setItem("gmail_custom_date", customDate);
       }
 
       await supabase
@@ -190,10 +200,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
           email: user.email, // The email address to add
           provider: "gmail", // "gmail" or "outlook"
           status: "active", // "active", "error", or "syncing"
-          // connected_at, last_sync, created_at, updated_at will use defaults if omitted
+          email_history: selectedDateRange, // Store the selected date range
         },
       ]);
-
       console.log("OAuth response:", data);
 
       if (error) {
@@ -288,6 +297,8 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     }
   };
+  useEffect(() => { console.log(selectedDateRange)
+  },[selectedDateRange]);
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
@@ -297,19 +308,22 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     if (!user) return;
 
+    if (selectedDateRange === "custom" && customDate) {
+      // If custom date is selected, use it
+      const customDateConverted = new Date(customDate);
+      setSelectedDateRange(customDateConverted.toISOString());
+    }
+    if (selectedDateRange === "all") {
+      setSelectedDateRange("2004-04-01T00:00:00.000Z");
+    } else {
+      // Otherwise, use the selected range
+      const days = parseInt(selectedDateRange, 10);
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      setSelectedDateRange(date.toISOString());
+    }
+
     try {
-      // Update the email step as completed
-      const { error } = await supabase.rpc("update_onboarding_step", {
-        user_uuid: user.id,
-        step_name: "",
-        completed: true,
-      });
-
-      if (error) {
-        console.error("Error updating email step:", error);
-        return;
-      }
-
       onComplete();
     } catch (error) {
       console.error("Error completing email setup:", error);
@@ -447,7 +461,8 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                           </div>
                           <div className="text-xs text-gray-400 mt-1">
                             <Calendar className="w-3 h-3 inline mr-1" />
-                            Analyzing: {getDateRangeDescription(account.dateRange || "30")}
+                            Analyzing:{" "}
+                            {getDateRangeDescription(account.dateRange || "30")}
                           </div>
                         </div>
                       </div>
@@ -529,11 +544,14 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
                 <div className="flex items-center mb-4">
                   <Calendar className="w-5 h-5 text-gray-600 mr-3" />
-                  <h3 className="font-semibold text-gray-900">Email Analysis Period</h3>
+                  <h3 className="font-semibold text-gray-900">
+                    Email Analysis Period
+                  </h3>
                 </div>
-                
+
                 <p className="text-sm text-gray-600 mb-4">
-                  Choose how far back you want FilePilot to analyze your emails for attachments:
+                  Choose how far back you want FilePilot to analyze your emails
+                  for attachments:
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -542,8 +560,8 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                       key={option.value}
                       className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
                         selectedDateRange === option.value
-                          ? 'border-blue-500 bg-blue-50 text-blue-900'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          ? "border-blue-500 bg-blue-50 text-blue-900"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >
                       <input
@@ -561,18 +579,22 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                         }}
                         className="sr-only"
                       />
-                      <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
-                        selectedDateRange === option.value
-                          ? 'border-blue-500 bg-blue-500'
-                          : 'border-gray-300'
-                      }`}>
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
+                          selectedDateRange === option.value
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-gray-300"
+                        }`}
+                      >
                         {selectedDateRange === option.value && (
                           <div className="w-2 h-2 bg-white rounded-full"></div>
                         )}
                       </div>
                       <div className="flex-1">
                         <div className="font-medium">{option.label}</div>
-                        <div className="text-xs text-gray-500">{option.description}</div>
+                        <div className="text-xs text-gray-500">
+                          {option.description}
+                        </div>
                       </div>
                     </label>
                   ))}
@@ -588,7 +610,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                       type="date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
-                      max={new Date().toISOString().split('T')[0]}
+                      max={new Date().toISOString().split("T")[0]}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="text-xs text-gray-500 mt-2">
@@ -602,11 +624,13 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                   <div className="flex items-center text-yellow-800">
                     <Clock className="w-4 h-4 mr-2" />
                     <span className="text-sm font-medium">
-                      Estimated emails to analyze: {getEstimatedEmailCount(selectedDateRange)}
+                      Estimated emails to analyze:{" "}
+                      {getEstimatedEmailCount(selectedDateRange)}
                     </span>
                   </div>
                   <p className="text-xs text-yellow-700 mt-1">
-                    Processing time depends on the number of emails and attachments
+                    Processing time depends on the number of emails and
+                    attachments
                   </p>
                 </div>
               </div>
@@ -614,7 +638,11 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               <div className="max-w-md">
                 <button
                   onClick={handleConnectGmail}
-                  disabled={isConnecting || !selectedDateRange || (selectedDateRange === "custom" && !customDate)}
+                  disabled={
+                    isConnecting ||
+                    !selectedDateRange ||
+                    (selectedDateRange === "custom" && !customDate)
+                  }
                   className="w-full p-6 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left"
                 >
                   <div className="flex items-center mb-3">
@@ -721,7 +749,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
                 <Calendar className="w-6 h-6 text-blue-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">Analysis Period</h3>
+                <h3 className="text-lg font-semibold text-white">
+                  Analysis Period
+                </h3>
               </div>
 
               <div className="space-y-2 text-sm text-blue-100">

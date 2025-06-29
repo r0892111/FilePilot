@@ -20,6 +20,8 @@ import {
   X,
   Info,
   ExternalLink,
+  Calendar,
+  Clock,
 } from "lucide-react";
 
 const supabase = createClient(
@@ -34,6 +36,7 @@ interface EmailAccount {
   connected: boolean;
   lastSync?: string;
   status: "active" | "error" | "syncing";
+  dateRange?: string;
 }
 
 interface EmailSetupPageProps {
@@ -47,6 +50,19 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDateRange, setSelectedDateRange] = useState<string>("30");
+  const [customDate, setCustomDate] = useState<string>("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const dateRangeOptions = [
+    { value: "7", label: "Last 7 days", description: "Recent emails only" },
+    { value: "30", label: "Last 30 days", description: "Past month" },
+    { value: "90", label: "Last 3 months", description: "Quarterly review" },
+    { value: "180", label: "Last 6 months", description: "Half-year analysis" },
+    { value: "365", label: "Last year", description: "Full year review" },
+    { value: "all", label: "All emails", description: "Complete email history" },
+    { value: "custom", label: "Custom date", description: "Choose specific date" },
+  ];
 
   useEffect(() => {
     checkUser();
@@ -96,6 +112,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         connected: true,
         lastSync: account.last_sync,
         status: account.status as "active" | "error" | "syncing",
+        dateRange: account.date_range || "30",
       }));
 
       setEmailAccounts(accounts);
@@ -104,8 +121,34 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
   };
 
+  const getDateRangeDescription = (range: string) => {
+    if (range === "custom") {
+      return customDate ? `Since ${new Date(customDate).toLocaleDateString()}` : "Choose date";
+    }
+    const option = dateRangeOptions.find(opt => opt.value === range);
+    return option ? option.description : "Unknown range";
+  };
+
+  const getEstimatedEmailCount = (range: string) => {
+    const estimates = {
+      "7": "~50-200 emails",
+      "30": "~200-800 emails", 
+      "90": "~600-2,400 emails",
+      "180": "~1,200-4,800 emails",
+      "365": "~2,500-10,000 emails",
+      "all": "~5,000+ emails",
+      "custom": customDate ? "Varies by date" : "Select date first"
+    };
+    return estimates[range as keyof typeof estimates] || "Unknown";
+  };
+
   const handleConnectGmail = async () => {
     if (!user) return;
+
+    if (!selectedDateRange || (selectedDateRange === "custom" && !customDate)) {
+      alert("Please select how far back you want to analyze your emails.");
+      return;
+    }
 
     setIsConnecting(true);
 
@@ -130,7 +173,11 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
-      // Inside handleConnectGmail, after a successful OAuth initiation:
+      // Store the date range preference for when the user returns
+      localStorage.setItem('gmail_date_range', selectedDateRange);
+      if (selectedDateRange === "custom" && customDate) {
+        localStorage.setItem('gmail_custom_date', customDate);
+      }
 
       await supabase
         .from("user_onboarding_steps")
@@ -398,6 +445,10 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                                 </>
                               )}
                           </div>
+                          <div className="text-xs text-gray-400 mt-1">
+                            <Calendar className="w-3 h-3 inline mr-1" />
+                            Analyzing: {getDateRangeDescription(account.dateRange || "30")}
+                          </div>
                         </div>
                       </div>
 
@@ -474,10 +525,96 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                 </div>
               </div>
 
+              {/* Date Range Selection */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center mb-4">
+                  <Calendar className="w-5 h-5 text-gray-600 mr-3" />
+                  <h3 className="font-semibold text-gray-900">Email Analysis Period</h3>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-4">
+                  Choose how far back you want FilePilot to analyze your emails for attachments:
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                  {dateRangeOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
+                        selectedDateRange === option.value
+                          ? 'border-blue-500 bg-blue-50 text-blue-900'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="dateRange"
+                        value={option.value}
+                        checked={selectedDateRange === option.value}
+                        onChange={(e) => {
+                          setSelectedDateRange(e.target.value);
+                          if (e.target.value === "custom") {
+                            setShowDatePicker(true);
+                          } else {
+                            setShowDatePicker(false);
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
+                        selectedDateRange === option.value
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedDateRange === option.value && (
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{option.label}</div>
+                        <div className="text-xs text-gray-500">{option.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Custom Date Picker */}
+                {selectedDateRange === "custom" && (
+                  <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select start date:
+                    </label>
+                    <input
+                      type="date"
+                      value={customDate}
+                      onChange={(e) => setCustomDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      FilePilot will analyze emails from this date onwards
+                    </p>
+                  </div>
+                )}
+
+                {/* Estimated Email Count */}
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center text-yellow-800">
+                    <Clock className="w-4 h-4 mr-2" />
+                    <span className="text-sm font-medium">
+                      Estimated emails to analyze: {getEstimatedEmailCount(selectedDateRange)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    Processing time depends on the number of emails and attachments
+                  </p>
+                </div>
+              </div>
+
               <div className="max-w-md">
                 <button
                   onClick={handleConnectGmail}
-                  disabled={isConnecting}
+                  disabled={isConnecting || !selectedDateRange || (selectedDateRange === "custom" && !customDate)}
                   className="w-full p-6 rounded-xl border-2 border-gray-200 hover:border-red-300 hover:bg-red-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left"
                 >
                   <div className="flex items-center mb-3">
@@ -580,20 +717,20 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               </ul>
             </div>
 
-            {/* OAuth Flow Info */}
+            {/* Date Range Info */}
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 h-fit">
               <div className="flex items-center mb-4">
-                <ExternalLink className="w-6 h-6 text-blue-400 mr-3" />
-                <h3 className="text-lg font-semibold text-white">OAuth Flow</h3>
+                <Calendar className="w-6 h-6 text-blue-400 mr-3" />
+                <h3 className="text-lg font-semibold text-white">Analysis Period</h3>
               </div>
 
               <div className="space-y-2 text-sm text-blue-100">
-                <div>1. Click "Connect Gmail"</div>
-                <div>2. Choose your Gmail account</div>
-                <div>3. Grant attachment permissions</div>
-                <div>4. Return to FilePilot setup</div>
+                <div>• Choose how far back to analyze</div>
+                <div>• Recent emails process faster</div>
+                <div>• All emails = complete history</div>
+                <div>• Custom date for specific periods</div>
                 <div className="text-xs text-blue-200 mt-3">
-                  The account you select will be monitored for attachments
+                  You can always change this later in settings
                 </div>
               </div>
             </div>

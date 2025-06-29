@@ -162,6 +162,16 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     setIsConnecting(true);
 
+    await supabase.from("user_email_accounts").insert([
+      {
+        user_id: user.id, // UUID of the user
+        email: user.email, // The email address to add
+        provider: "gmail", // "gmail" or "outlook"
+        status: "active", // "active", "error", or "syncing"
+        email_history: selectedDateRange, // Store the selected date range
+      },
+    ]);
+
     try {
       console.log("Initiating Gmail OAuth for email monitoring...");
 
@@ -183,26 +193,12 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
-      // Store the date range preference for when the user returns
-      localStorage.setItem("gmail_date_range", selectedDateRange);
-      if (selectedDateRange === "custom" && customDate) {
-        localStorage.setItem("gmail_custom_date", customDate);
-      }
-
       await supabase
         .from("user_onboarding_steps")
         .update({ email_connected: true })
         .eq("user_id", user.id);
 
-      await supabase.from("user_email_accounts").insert([
-        {
-          user_id: user.id, // UUID of the user
-          email: user.email, // The email address to add
-          provider: "gmail", // "gmail" or "outlook"
-          status: "active", // "active", "error", or "syncing"
-          email_history: selectedDateRange, // Store the selected date range
-        },
-      ]);
+     
       console.log("OAuth response:", data);
 
       if (error) {
@@ -297,8 +293,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     }
   };
-  useEffect(() => { console.log(selectedDateRange)
-  },[selectedDateRange]);
+  useEffect(() => {
+    console.log(selectedDateRange);
+  }, [selectedDateRange]);
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {

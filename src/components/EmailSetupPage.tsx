@@ -23,7 +23,6 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
-import { triggerCompleteSetupWebhook } from "../api/webhooks";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -54,7 +53,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const [selectedDateRange, setSelectedDateRange] = useState<string>("30");
   const [customDate, setCustomDate] = useState<string>("");
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [isProcessingOAuth, setIsProcessingOAuth] = useState(false);
 
   const dateRangeOptions = [
     { value: "7", label: "Last 7 days", description: "Recent emails only" },
@@ -81,7 +79,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   useEffect(() => {
     if (user) {
       loadEmailAccounts();
-      handleOAuthCallback();
     }
   }, [user]);
 
@@ -97,74 +94,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       console.error("Error checking user:", error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleOAuthCallback = async () => {
-    if (!user) return;
-
-    // Check if we're returning from OAuth
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasOAuthParams = urlParams.has('code') || urlParams.has('access_token');
-    
-    // Check if we have stored date range preferences
-    const storedDateRange = localStorage.getItem('filepilot_date_range');
-    const storedCustomDate = localStorage.getItem('filepilot_custom_date');
-
-    if (hasOAuthParams && storedDateRange) {
-      setIsProcessingOAuth(true);
-      
-      try {
-        console.log("Processing OAuth callback...");
-        
-        // Get the current session to access provider token
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.provider_token && session?.user?.email) {
-          // Calculate sync date
-          const syncDate = calculateSyncDate(storedDateRange, storedCustomDate);
-          
-          // Add the authenticated user's email to the database
-          const { data, error } = await supabase.rpc('add_user_email_account', {
-            user_uuid: user.id,
-            email_address: session.user.email,
-            email_provider: 'gmail',
-            sync_date: syncDate.toISOString().split('T')[0]
-          });
-
-          if (error) {
-            console.error("Error adding email account:", error);
-          } else if (data?.success) {
-            console.log("Email account added successfully:", data);
-            
-            // Update onboarding step
-            await supabase
-              .from("user_onboarding_steps")
-              .update({ email_connected: true })
-              .eq("user_id", user.id);
-
-            // Trigger webhook
-            await triggerCompleteSetupWebhook(user.id, session.user.email, "gmail", "connected");
-            
-            // Reload email accounts
-            await loadEmailAccounts();
-          } else {
-            console.error("Failed to add email account:", data?.error);
-          }
-        }
-
-        // Clean up localStorage
-        localStorage.removeItem('filepilot_date_range');
-        localStorage.removeItem('filepilot_custom_date');
-        
-        // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-      } catch (error) {
-        console.error("Error processing OAuth callback:", error);
-      } finally {
-        setIsProcessingOAuth(false);
-      }
     }
   };
 
@@ -191,45 +120,13 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         connected: true,
         lastSync: account.last_sync,
         status: account.status as "active" | "error" | "syncing",
-        dateRange: account.email_history ? formatDateRange(account.email_history) : "30",
+        dateRange: account.date_range || "30",
       }));
 
       setEmailAccounts(accounts);
     } catch (error) {
       console.error("Error loading email accounts:", error);
     }
-  };
-
-  const formatDateRange = (emailHistory: string) => {
-    if (!emailHistory) return "30";
-    
-    const historyDate = new Date(emailHistory);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - historyDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Map to closest preset option
-    if (diffDays <= 7) return "7";
-    if (diffDays <= 30) return "30";
-    if (diffDays <= 90) return "90";
-    if (diffDays <= 180) return "180";
-    if (diffDays <= 365) return "365";
-    return "all";
-  };
-
-  const calculateSyncDate = (range: string, customDateValue?: string): Date => {
-    if (range === "custom" && customDateValue) {
-      return new Date(customDateValue);
-    }
-    
-    if (range === "all") {
-      return new Date("2004-04-01"); // Gmail launch date
-    }
-    
-    const days = parseInt(range, 10);
-    const date = new Date();
-    date.setDate(date.getDate() - days);
-    return date;
   };
 
   const getDateRangeDescription = (range: string) => {
@@ -265,14 +162,18 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     setIsConnecting(true);
 
+    await supabase.from("user_email_accounts").insert([
+      {
+        user_id: user.id, // UUID of the user
+        email: user.email, // The email address to add
+        provider: "gmail", // "gmail" or "outlook"
+        status: "active", // "active", "error", or "syncing"
+        email_history: selectedDateRange, // Store the selected date range
+      },
+    ]);
+
     try {
       console.log("Initiating Gmail OAuth for email monitoring...");
-
-      // Store date range preferences in localStorage for after OAuth redirect
-      localStorage.setItem('filepilot_date_range', selectedDateRange);
-      if (customDate) {
-        localStorage.setItem('filepilot_custom_date', customDate);
-      }
 
       // Get the current origin for redirect
       const redirectTo = `${window.location.origin}/steps`;
@@ -292,6 +193,12 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
+      await supabase
+        .from("user_onboarding_steps")
+        .update({ email_connected: true })
+        .eq("user_id", user.id);
+
+     
       console.log("OAuth response:", data);
 
       if (error) {
@@ -319,7 +226,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     try {
-      const { data, error } = await supabase.rpc("remove_user_email_account", {
+      const { error } = await supabase.rpc("remove_user_email_account", {
         user_uuid: user.id,
         email_address: email,
       });
@@ -330,23 +237,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         return;
       }
 
-      if (data && !data.success) {
-        alert(data.error || "Failed to remove email account.");
-        return;
-      }
-
       setEmailAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
-      
-      // If no accounts left, update onboarding step
-      if (emailAccounts.length === 1) {
-        await supabase
-          .from("user_onboarding_steps")
-          .update({ email_connected: false })
-          .eq("user_id", user.id);
-      }
-
-      alert("Email account removed successfully!");
-
     } catch (error) {
       console.error("Error removing email account:", error);
       alert(
@@ -402,6 +293,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     }
   };
+  useEffect(() => {
+    console.log(selectedDateRange);
+  }, [selectedDateRange]);
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
@@ -410,6 +304,21 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     if (!user) return;
+
+    if (selectedDateRange === "custom" && customDate) {
+      // If custom date is selected, use it
+      const customDateConverted = new Date(customDate);
+      setSelectedDateRange(customDateConverted.toISOString());
+    }
+    if (selectedDateRange === "all") {
+      setSelectedDateRange("2004-04-01T00:00:00.000Z");
+    } else {
+      // Otherwise, use the selected range
+      const days = parseInt(selectedDateRange, 10);
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      setSelectedDateRange(date.toISOString());
+    }
 
     try {
       onComplete();
@@ -493,21 +402,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
             We only read attachment metadata - never email content
           </div>
         </div>
-
-        {/* Processing OAuth Notice */}
-        {isProcessingOAuth && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
-            <div className="flex items-center text-blue-800">
-              <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-              <div>
-                <div className="font-medium">Processing Gmail Connection...</div>
-                <div className="text-sm text-blue-600">
-                  Setting up your email account and preferences
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main Setup Area */}
@@ -743,7 +637,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                   onClick={handleConnectGmail}
                   disabled={
                     isConnecting ||
-                    isProcessingOAuth ||
                     !selectedDateRange ||
                     (selectedDateRange === "custom" && !customDate)
                   }
@@ -759,10 +652,10 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                     </div>
                   </div>
 
-                  {isConnecting || isProcessingOAuth ? (
+                  {isConnecting ? (
                     <div className="flex items-center text-blue-600 text-sm">
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {isProcessingOAuth ? "Processing connection..." : "Connecting to Gmail..."}
+                      Connecting to Gmail...
                     </div>
                   ) : (
                     <div className="flex items-center text-gray-600 text-sm">
@@ -773,19 +666,14 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                 </button>
               </div>
 
-              {(isConnecting || isProcessingOAuth) && (
+              {isConnecting && (
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <div className="flex items-center text-blue-800">
                     <Loader2 className="w-5 h-5 mr-3 animate-spin" />
                     <div>
-                      <div className="font-medium">
-                        {isProcessingOAuth ? "Processing Gmail Connection..." : "Connecting to Gmail..."}
-                      </div>
+                      <div className="font-medium">Connecting to Gmail...</div>
                       <div className="text-sm text-blue-600">
-                        {isProcessingOAuth 
-                          ? "Setting up your email account and preferences"
-                          : "You'll be redirected to Google to authorize FilePilot"
-                        }
+                        You'll be redirected to Google to authorize FilePilot
                       </div>
                     </div>
                   </div>

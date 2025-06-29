@@ -53,6 +53,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const [selectedDateRange, setSelectedDateRange] = useState<string>("30");
   const [customDate, setCustomDate] = useState<string>("");
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [newEmailAddress, setNewEmailAddress] = useState("");
+  const [showAddEmail, setShowAddEmail] = useState(false);
+  const [isAddingEmail, setIsAddingEmail] = useState(false);
 
   const dateRangeOptions = [
     { value: "7", label: "Last 7 days", description: "Recent emails only" },
@@ -120,13 +123,45 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         connected: true,
         lastSync: account.last_sync,
         status: account.status as "active" | "error" | "syncing",
-        dateRange: account.date_range || "30",
+        dateRange: account.email_history ? formatDateRange(account.email_history) : "30",
       }));
 
       setEmailAccounts(accounts);
     } catch (error) {
       console.error("Error loading email accounts:", error);
     }
+  };
+
+  const formatDateRange = (emailHistory: string) => {
+    if (!emailHistory) return "30";
+    
+    const historyDate = new Date(emailHistory);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - historyDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Map to closest preset option
+    if (diffDays <= 7) return "7";
+    if (diffDays <= 30) return "30";
+    if (diffDays <= 90) return "90";
+    if (diffDays <= 180) return "180";
+    if (diffDays <= 365) return "365";
+    return "all";
+  };
+
+  const calculateSyncDate = (range: string, customDateValue?: string): Date => {
+    if (range === "custom" && customDateValue) {
+      return new Date(customDateValue);
+    }
+    
+    if (range === "all") {
+      return new Date("2004-04-01"); // Gmail launch date
+    }
+    
+    const days = parseInt(range, 10);
+    const date = new Date();
+    date.setDate(date.getDate() - days);
+    return date;
   };
 
   const getDateRangeDescription = (range: string) => {
@@ -152,6 +187,61 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     return estimates[range as keyof typeof estimates] || "Unknown";
   };
 
+  const handleAddEmailAccount = async () => {
+    if (!user || !newEmailAddress.trim()) return;
+
+    if (!selectedDateRange || (selectedDateRange === "custom" && !customDate)) {
+      alert("Please select how far back you want to analyze emails.");
+      return;
+    }
+
+    setIsAddingEmail(true);
+
+    try {
+      const syncDate = calculateSyncDate(selectedDateRange, customDate);
+      
+      // Add email account to database
+      const { data, error } = await supabase.rpc('add_user_email_account', {
+        user_uuid: user.id,
+        email_address: newEmailAddress.trim(),
+        email_provider: 'gmail',
+        sync_date: syncDate.toISOString().split('T')[0] // Format as YYYY-MM-DD
+      });
+
+      if (error) {
+        console.error("Error adding email account:", error);
+        alert("Failed to add email account. Please try again.");
+        return;
+      }
+
+      if (data && !data.success) {
+        alert(data.error || "Failed to add email account.");
+        return;
+      }
+
+      // Reload email accounts
+      await loadEmailAccounts();
+      
+      // Reset form
+      setNewEmailAddress("");
+      setShowAddEmail(false);
+      
+      // Update onboarding step
+      await supabase
+        .from("user_onboarding_steps")
+        .update({ email_connected: true })
+        .eq("user_id", user.id);
+
+      alert("Email account added successfully!");
+
+    } catch (error) {
+      console.error("Error adding email account:", error);
+      alert("An error occurred while adding the email account.");
+    } finally {
+      setIsAddingEmail(false);
+    }
+  };
+
   const handleConnectGmail = async () => {
     if (!user) return;
 
@@ -162,18 +252,14 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
     setIsConnecting(true);
 
-    await supabase.from("user_email_accounts").insert([
-      {
-        user_id: user.id, // UUID of the user
-        email: user.email, // The email address to add
-        provider: "gmail", // "gmail" or "outlook"
-        status: "active", // "active", "error", or "syncing"
-        email_history: selectedDateRange, // Store the selected date range
-      },
-    ]);
-
     try {
       console.log("Initiating Gmail OAuth for email monitoring...");
+
+      // Store date range preferences in localStorage for after OAuth redirect
+      localStorage.setItem('filepilot_date_range', selectedDateRange);
+      if (customDate) {
+        localStorage.setItem('filepilot_custom_date', customDate);
+      }
 
       // Get the current origin for redirect
       const redirectTo = `${window.location.origin}/steps`;
@@ -193,12 +279,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
-      await supabase
-        .from("user_onboarding_steps")
-        .update({ email_connected: true })
-        .eq("user_id", user.id);
-
-     
       console.log("OAuth response:", data);
 
       if (error) {
@@ -226,7 +306,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     try {
-      const { error } = await supabase.rpc("remove_user_email_account", {
+      const { data, error } = await supabase.rpc("remove_user_email_account", {
         user_uuid: user.id,
         email_address: email,
       });
@@ -237,7 +317,14 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         return;
       }
 
+      if (data && !data.success) {
+        alert(data.error || "Failed to remove email account.");
+        return;
+      }
+
       setEmailAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
+      alert("Email account removed successfully!");
+
     } catch (error) {
       console.error("Error removing email account:", error);
       alert(
@@ -293,9 +380,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     }
   };
-  useEffect(() => {
-    console.log(selectedDateRange);
-  }, [selectedDateRange]);
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
@@ -304,21 +388,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
 
     if (!user) return;
-
-    if (selectedDateRange === "custom" && customDate) {
-      // If custom date is selected, use it
-      const customDateConverted = new Date(customDate);
-      setSelectedDateRange(customDateConverted.toISOString());
-    }
-    if (selectedDateRange === "all") {
-      setSelectedDateRange("2004-04-01T00:00:00.000Z");
-    } else {
-      // Otherwise, use the selected range
-      const days = parseInt(selectedDateRange, 10);
-      const date = new Date();
-      date.setDate(date.getDate() - days);
-      setSelectedDateRange(date.toISOString());
-    }
 
     try {
       onComplete();
@@ -502,14 +571,68 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
               </div>
             )}
 
-            {/* Gmail Connection */}
+            {/* Add Email Account */}
             <div className="bg-white rounded-2xl p-8 shadow-xl">
-              <div className="flex items-center mb-6">
-                <Plus className="w-6 h-6 text-blue-600 mr-3" />
-                <h2 className="text-xl font-bold text-gray-900">
-                  Connect Gmail Account
-                </h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <Plus className="w-6 h-6 text-blue-600 mr-3" />
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Add Gmail Account
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowAddEmail(!showAddEmail)}
+                  className="flex items-center text-blue-600 hover:text-blue-700 transition-colors text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  {showAddEmail ? 'Cancel' : 'Add Email'}
+                </button>
               </div>
+
+              {/* Manual Email Addition */}
+              {showAddEmail && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+                  <h3 className="font-semibold text-blue-900 mb-4">Add Email Account</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-blue-800 mb-2">
+                        Gmail Address
+                      </label>
+                      <input
+                        type="email"
+                        value={newEmailAddress}
+                        onChange={(e) => setNewEmailAddress(e.target.value)}
+                        placeholder="Enter Gmail address..."
+                        className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={handleAddEmailAccount}
+                        disabled={!newEmailAddress.trim() || isAddingEmail || !selectedDateRange || (selectedDateRange === "custom" && !customDate)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg font-medium transition-colors disabled:cursor-not-allowed"
+                      >
+                        {isAddingEmail ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Add Account"
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAddEmail(false);
+                          setNewEmailAddress("");
+                        }}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Important Notice */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">

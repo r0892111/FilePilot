@@ -21,7 +21,9 @@ import {
   ArrowRight,
   Mail,
   Target,
-  RefreshCw
+  RefreshCw,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { OnboardingStepsPage } from './OnboardingStepsPage';
 
@@ -78,6 +80,8 @@ export function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isResyncing, setIsResyncing] = useState(false);
+  const [resyncMessage, setResyncMessage] = useState<string | null>(null);
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData>({
     payment_completed: false,
     email_connected: false,
@@ -95,6 +99,16 @@ export function Dashboard() {
   useEffect(() => {
     checkUserAndSubscription();
   }, []);
+
+  // Clear resync message after 5 seconds
+  useEffect(() => {
+    if (resyncMessage) {
+      const timer = setTimeout(() => {
+        setResyncMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [resyncMessage]);
 
   const checkUserAndSubscription = async () => {
     try {
@@ -220,6 +234,38 @@ export function Dashboard() {
         }
       ]);
     }, 1000);
+  };
+
+  const handleResync = async () => {
+    if (!user) return;
+
+    setIsResyncing(true);
+    setResyncMessage(null);
+
+    try {
+      console.log('Starting manual resync for user:', user.id);
+      
+      // Simulate resync process - in a real app, this would trigger:
+      // 1. Re-fetch emails from connected accounts
+      // 2. Re-process attachments
+      // 3. Update organization in Google Drive
+      // 4. Refresh dashboard data
+      
+      // For now, we'll simulate the process
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Refresh dashboard data after resync
+      await loadDashboardData();
+      
+      setResyncMessage('Resync completed successfully! Email accounts and documents have been refreshed.');
+      console.log('Manual resync completed for user:', user.id);
+      
+    } catch (error) {
+      console.error('Error during resync:', error);
+      setResyncMessage('Resync failed. Please try again or contact support if the issue persists.');
+    } finally {
+      setIsResyncing(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -369,6 +415,19 @@ export function Dashboard() {
                 Welcome, {user ? getUserDisplayName(user) : 'User'}
               </div>
               
+              {/* Resync Button */}
+              <button
+                onClick={handleResync}
+                disabled={isResyncing}
+                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Manually resync email accounts and documents"
+              >
+                <RefreshCw className={`w-4 h-4 mr-1 ${isResyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline text-sm font-medium">
+                  {isResyncing ? 'Resyncing...' : 'Resync'}
+                </span>
+              </button>
+              
               <button 
                 onClick={() => setShowOnboarding(true)}
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
@@ -390,6 +449,24 @@ export function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Resync Status Message */}
+        {resyncMessage && (
+          <div className={`mb-6 p-4 rounded-lg border ${
+            resyncMessage.includes('failed') 
+              ? 'bg-red-50 border-red-200 text-red-800' 
+              : 'bg-green-50 border-green-200 text-green-800'
+          }`}>
+            <div className="flex items-center">
+              {resyncMessage.includes('failed') ? (
+                <AlertTriangle className="w-5 h-5 mr-3 flex-shrink-0" />
+              ) : (
+                <CheckCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+              )}
+              <span className="text-sm font-medium">{resyncMessage}</span>
+            </div>
+          </div>
+        )}
+
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">

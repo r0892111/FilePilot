@@ -50,7 +50,18 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const getThirtyDaysAgoISOString = () => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString();
+  };
+  const [selectedDateISOString, setSelectedDateISOString] = useState<string>(
+    getThirtyDaysAgoISOString()
+  );
+
   const [selectedDateRange, setSelectedDateRange] = useState<string>("30");
+
   const [customDate, setCustomDate] = useState<string>("");
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -74,13 +85,14 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
 
   useEffect(() => {
     checkUser();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (user) {
-      loadEmailAccounts();
-    }
-  }, [user]);
+    setSelectedDateISOString(customDate);
+
+    console.log("Selected date range:", selectedDateRange);
+    console.log("Selected date ISO string:", selectedDateISOString);
+  }, [selectedDateRange, customDate]);
 
   const checkUser = async () => {
     try {
@@ -97,7 +109,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
   };
 
-  const loadEmailAccounts = async () => {
+  /*   const loadEmailAccounts = async () => {
     if (!user) return;
 
     try {
@@ -128,7 +140,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       console.error("Error loading email accounts:", error);
     }
   };
-
+ */
   const getDateRangeDescription = (range: string) => {
     if (range === "custom") {
       return customDate
@@ -155,22 +167,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const handleConnectGmail = async () => {
     if (!user) return;
 
-    if (!selectedDateRange || (selectedDateRange === "custom" && !customDate)) {
-      alert("Please select how far back you want to analyze your emails.");
-      return;
-    }
-
     setIsConnecting(true);
-
-    await supabase.from("user_email_accounts").insert([
-      {
-        user_id: user.id, // UUID of the user
-        email: user.email, // The email address to add
-        provider: "gmail", // "gmail" or "outlook"
-        status: "active", // "active", "error", or "syncing"
-        email_history: selectedDateRange, // Store the selected date range
-      },
-    ]);
 
     try {
       console.log("Initiating Gmail OAuth for email monitoring...");
@@ -193,20 +190,16 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
         },
       });
 
-      await supabase
-        .from("user_onboarding_steps")
-        .update({ email_connected: true })
-        .eq("user_id", user.id);
-
-     
-      console.log("OAuth response:", data);
-
-      if (error) {
-        console.error("OAuth error:", error);
-        alert(`Gmail authentication failed: ${error.message}`);
-      } else {
+      // Only set email_connected to true if the OAuth flow was successful
+      if (!error) {
+        await setEmailConnectionStatus();
+        await updateUserEmailAccount();
+        console.log("OAuth response:", data);
         console.log("OAuth initiated successfully");
         // The redirect will happen automatically
+      } else {
+        console.error("OAuth error:", error);
+        alert(`Gmail authentication failed: ${error.message}`);
       }
     } catch (error: any) {
       console.error("Unexpected OAuth error:", error);
@@ -215,6 +208,46 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const setEmailConnectionStatus = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("user_onboarding_steps")
+        .update({ email_connected: true })
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Error updating email account status:", error);
+        return;
+      }
+      if (data) {
+        console.log("Email connection status updated successfully:", data);
+      }
+    } catch (error) {
+      console.error("Error setting email connection status:", error);
+    }
+  };
+
+  const updateUserEmailAccount = async () => {
+    const { data, error } = await supabase.from("user_email_accounts").insert([
+      // Insert a new email account for the user
+      {
+        user_id: user.id, // UUID of the user
+        email: user.email, // The email address to add
+        provider: "gmail", // "gmail" or "outlook"
+        status: "active", // "active", "error", or "syncing"
+        email_history: selectedDateISOString, // Store the selected date range
+      },
+    ]);
+
+    if (data) {
+      console.log("Email account added successfully:", data);
+    } else {
+      console.error("Error adding email account:", error);
     }
   };
 
@@ -293,9 +326,6 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       );
     }
   };
-  useEffect(() => {
-    console.log(selectedDateRange);
-  }, [selectedDateRange]);
 
   const handleComplete = async () => {
     if (emailAccounts.length === 0) {
@@ -311,7 +341,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       setSelectedDateRange(customDateConverted.toISOString());
     }
     if (selectedDateRange === "all") {
-      setSelectedDateRange("2004-04-01T00:00:00.000Z");
+      setSelectedDateRange("2004-04-01.000Z");
     } else {
       // Otherwise, use the selected range
       const days = parseInt(selectedDateRange, 10);
@@ -346,6 +376,26 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
       default:
         return <AlertCircle className="w-4 h-4 text-gray-400" />;
     }
+  };
+
+  const getDateRangeIsoString = (range: string, customDate: string) => {
+    if (range === "custom" && customDate) {
+      // Use the selected custom date as ISO string
+      return new Date(customDate).toISOString();
+    }
+    if (range === "all") {
+      // April 1, 2004 as ISO string
+      return "2004-04-01T00:00:00.000Z";
+    }
+    // Otherwise, treat as number of days ago
+    const days = parseInt(range, 10);
+    if (!isNaN(days)) {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      return date.toISOString();
+    }
+    // Fallback: return today
+    return new Date().toISOString();
   };
 
   if (isLoading) {
@@ -567,6 +617,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                         value={option.value}
                         checked={selectedDateRange === option.value}
                         onChange={(e) => {
+                          setSelectedDateISOString(
+                            getDateRangeIsoString(e.target.value, customDate)
+                          );
                           setSelectedDateRange(e.target.value);
                           if (e.target.value === "custom") {
                             setShowDatePicker(true);

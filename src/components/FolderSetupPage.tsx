@@ -60,6 +60,10 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
     loadDriveFolders();
   }, []);
 
+  useEffect(() => {
+    console.log(selectedFolder);
+  }, [selectedFolder]);
+
   const checkUser = async () => {
     try {
       const {
@@ -254,6 +258,29 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
       ));
   };
 
+  const updateUserDriveAccount = async () => {
+    if (!user || !selectedFolder) return;
+
+    try {
+      // Insert or update the user's drive account with the selected folder
+      const { data, error } = await supabase.from("user_drive_account").insert([
+        {
+          drive_folderId: selectedFolder, // The selected Google Drive folder ID
+          user_id: user.id, // The user's UUID (foreign key to auth.users)
+        },
+      ]);
+
+      if (error) {
+        console.error("Error updating user drive account:", error);
+        return false;
+      }
+      console.log("User drive account updated:", data);
+      return true;
+    } catch (error) {
+      console.error("Unexpected error updating user drive account:", error);
+      return false;
+    }
+  };
   const handleComplete = async () => {
     if (!selectedFolder) {
       alert("Please select a folder to continue.");
@@ -270,7 +297,14 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
         completed: true,
       });
 
-      await triggerCompleteSetupWebhook(user.id, user.email, "google", "completed");
+      await updateUserDriveAccount();
+      await triggerCompleteSetupWebhook(
+        user.id,
+        user.email,
+        "google",
+        "completed",
+        selectedFolder !== "root" ? selectedFolder : ""
+      );
 
       if (error) {
         console.error("Error updating folder step:", error);
@@ -287,9 +321,12 @@ export function FolderSetupPage({ onComplete, onBack }: FolderSetupPageProps) {
     const findFolder = (folders: DriveFolder[]): DriveFolder | null => {
       for (const folder of folders) {
         if (folder.id === selectedFolder) return folder;
+        0;
         if (folder.children) {
           const found = findFolder(folder.children);
-          if (found) return found;
+          if (found) {
+            return found;
+          }
         }
       }
       return null;

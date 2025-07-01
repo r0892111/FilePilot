@@ -23,7 +23,8 @@ import {
   X,
   ExternalLink,
   Trash2,
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react';
 import { EmailSetupPage } from './EmailSetupPage';
 import { FolderSetupPage } from './FolderSetupPage';
@@ -96,7 +97,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   const [settings, setSettings] = useState<EditableSettings>({
     selectedFolder: '/FilePilot/Documents',
     duplicateHandling: 'rename',
-    connectedEmails: ['user@gmail.com', 'work@outlook.com'],
+    connectedEmails: ['user@gmail.com'],
     subscriptionCanceled: false
   });
   const [originalSettings, setOriginalSettings] = useState<EditableSettings>(settings);
@@ -121,16 +122,20 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   const checkUserAndLoadData = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        await Promise.all([
-          loadOnboardingSteps(session.user.id),
-          loadSubscriptionData(),
-          loadUserSettings(session.user.id)
-        ]);
+      if (!session?.user) {
+        window.location.href = '/login';
+        return;
       }
+      
+      setUser(session.user);
+      await Promise.all([
+        loadOnboardingSteps(session.user.id),
+        loadSubscriptionData(),
+        loadUserSettings(session.user.id)
+      ]);
     } catch (error) {
       console.error('Error checking user:', error);
+      window.location.href = '/login';
     } finally {
       setIsLoading(false);
     }
@@ -186,14 +191,23 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
   };
 
   const loadUserSettings = async (userId: string) => {
-    // In a real app, this would load from a user_settings table
-    // For now, we'll use mock data
     try {
-      // Simulate loading user preferences
+      // Load connected emails from database
+      const { data: emailData, error: emailError } = await supabase
+        .from('user_email_accounts')
+        .select('email, provider, status')
+        .eq('user_id', userId);
+
+      if (emailError) {
+        console.error('Error loading email accounts:', error);
+      }
+
+      const connectedEmails = emailData ? emailData.map(account => account.email) : [];
+      
       const mockSettings: EditableSettings = {
         selectedFolder: '/FilePilot/Documents',
         duplicateHandling: 'rename',
-        connectedEmails: ['user@gmail.com', 'work@outlook.com'],
+        connectedEmails: connectedEmails,
         subscriptionCanceled: subscription?.cancel_at_period_end || false
       };
       setSettings(mockSettings);
@@ -253,6 +267,7 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     setCurrentView('overview');
     if (user) {
       await loadOnboardingSteps(user.id);
+      await loadUserSettings(user.id);
     }
   };
 
@@ -308,22 +323,35 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
     }
   };
 
-  const handleRemoveEmail = (emailToRemove: string) => {
-    setSettings({
-      ...settings,
-      connectedEmails: settings.connectedEmails.filter(email => email !== emailToRemove)
-    });
+  const handleRemoveEmail = async (emailToRemove: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase.rpc('remove_user_email_account', {
+        user_uuid: user.id,
+        email_address: emailToRemove
+      });
+
+      if (error) {
+        console.error('Error removing email:', error);
+        alert('Failed to remove email account. Please try again.');
+        return;
+      }
+
+      // Update local state
+      setSettings({
+        ...settings,
+        connectedEmails: settings.connectedEmails.filter(email => email !== emailToRemove)
+      });
+    } catch (error) {
+      console.error('Error removing email:', error);
+      alert('Failed to remove email account. Please try again.');
+    }
   };
 
   const handleAddEmail = () => {
-    // In a real app, this would open an email connection flow
-    const newEmail = prompt('Enter email address to connect:');
-    if (newEmail && !settings.connectedEmails.includes(newEmail)) {
-      setSettings({
-        ...settings,
-        connectedEmails: [...settings.connectedEmails, newEmail]
-      });
-    }
+    // Redirect to email setup page
+    setCurrentView('email');
   };
 
   const handleCancelSubscription = async () => {
@@ -333,6 +361,11 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
         subscriptionCanceled: true
       });
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
   };
 
   const getStepStatus = (stepId: string): 'completed' | 'available' | 'locked' => {
@@ -467,6 +500,13 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                 </div>
               )}
               <button
+                onClick={handleSignOut}
+                className="flex items-center text-white/80 hover:text-white transition-colors"
+              >
+                <LogOut className="w-5 h-5 mr-2" />
+                Sign out
+              </button>
+              <button
                 onClick={onClose}
                 className="flex items-center text-white/80 hover:text-white transition-colors"
               >
@@ -528,38 +568,40 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Manage Settings</h2>
             
             <div className="space-y-8">
-              {/* Selected Folder */}
+              {/* Subscription Management */}
               <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Organization Folder</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Subscription</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">{settings.selectedFolder}</p>
-                      <p className="text-sm text-gray-600">Current organization folder</p>
+                      <p className="font-medium text-gray-900">
+                        {subscription?.cancel_at_period_end ? 'Subscription Canceling' : 'Active Subscription'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {subscription?.cancel_at_period_end 
+                          ? 'Your subscription will end at the current billing period'
+                          : 'Manage your billing and subscription settings'
+                        }
+                      </p>
                     </div>
-                    <button
-                      onClick={() => setCurrentView('folder')}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      Change Folder
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleStepAction('payment')}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        Manage Billing
+                      </button>
+                      {!subscription?.cancel_at_period_end && (
+                        <button
+                          onClick={handleCancelSubscription}
+                          className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Duplicate Handling */}
-              <div className="border-b border-gray-200 pb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Duplicate Handling</h3>
-                <select
-                  value={settings.duplicateHandling}
-                  onChange={(e) => setSettings({...settings, duplicateHandling: e.target.value as any})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="skip">Skip duplicates</option>
-                  <option value="rename">Rename duplicates</option>
-                  <option value="replace">Replace existing</option>
-                </select>
-                <p className="text-sm text-gray-600 mt-2">How to handle duplicate files when organizing</p>
               </div>
 
               {/* Connected Emails */}
@@ -595,40 +637,38 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
                 </div>
               </div>
 
-              {/* Subscription Management */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Subscription</h3>
+              {/* Selected Folder */}
+              <div className="border-b border-gray-200 pb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Organization Folder</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">
-                        {subscription?.cancel_at_period_end ? 'Subscription Canceling' : 'Active Subscription'}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {subscription?.cancel_at_period_end 
-                          ? 'Your subscription will end at the current billing period'
-                          : 'Manage your billing and subscription settings'
-                        }
-                      </p>
+                      <p className="font-medium text-gray-900">{settings.selectedFolder}</p>
+                      <p className="text-sm text-gray-600">Current organization folder</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleStepAction('payment')}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        Manage Billing
-                      </button>
-                      {!subscription?.cancel_at_period_end && (
-                        <button
-                          onClick={handleCancelSubscription}
-                          className="text-red-600 hover:text-red-700 text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => setCurrentView('folder')}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      Change Folder
+                    </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Duplicate Handling */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Duplicate Handling</h3>
+                <select
+                  value={settings.duplicateHandling}
+                  onChange={(e) => setSettings({...settings, duplicateHandling: e.target.value as any})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="skip">Skip duplicates</option>
+                  <option value="rename">Rename duplicates</option>
+                  <option value="replace">Replace existing</option>
+                </select>
+                <p className="text-sm text-gray-600 mt-2">How to handle duplicate files when organizing</p>
               </div>
             </div>
           </div>

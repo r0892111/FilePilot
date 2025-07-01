@@ -13,10 +13,10 @@ import {
   Clock,
   Lock,
   ChevronRight,
-  Play,
   LogOut,
   User,
   LayoutDashboard,
+  Settings,
 } from "lucide-react";
 import { stripeProducts } from "./stripe-config";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
@@ -341,7 +341,7 @@ function App() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={handleGetStarted}
-                  className="group bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
+                  className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center"
                 >
                   {hasActiveSubscription && allStepsCompleted ? (
                     <>
@@ -354,14 +354,19 @@ function App() {
                       Complete Setup
                     </>
                   ) : (
-                    <>Get Started Now</>
+                    <>
+                      Start Organizing Now
+                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </>
                   )}
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
 
-                <button className="group border-2 border-gray-600 hover:border-gray-500 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5">
-                  <Play className="w-5 h-5 mr-2" />
-                  Watch demo
+                <button 
+                  onClick={scrollToPricing}
+                  className="group border-2 border-gray-600 hover:border-gray-500 text-white px-8 py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5"
+                >
+                  View Pricing
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             </div>

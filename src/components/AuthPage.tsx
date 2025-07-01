@@ -22,6 +22,19 @@ export function AuthPage({ mode, onAuthSuccess }: AuthPageProps) {
     setAuthMode(mode);
   }, [mode]);
 
+  useEffect(() => {
+    // Check if user is already authenticated and redirect appropriately
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // User is already authenticated, redirect to home
+        window.location.href = '/';
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
   const goHome = () => {
     window.location.href = '/';
   };

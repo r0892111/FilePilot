@@ -1,7 +1,6 @@
 import React from 'react';
 import { 
   FileText, 
-  Image, 
   File, 
   FileSpreadsheet,
   Cloud,
@@ -61,22 +60,6 @@ const integrations: Integration[] = [
     color: '#DC2626',
     url: '/docs/file-types/pdf',
     description: 'Portable Document Format',
-    category: 'filetype'
-  },
-  {
-    name: 'Images',
-    icon: Image,
-    color: '#7C3AED',
-    url: '/docs/file-types/images',
-    description: 'JPG, PNG, GIF, SVG formats',
-    category: 'filetype'
-  },
-  {
-    name: 'PowerPoint',
-    logo: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Microsoft_Office_PowerPoint_%282019%E2%80%93present%29.svg',
-    color: '#D24726',
-    url: '/docs/file-types/powerpoint',
-    description: 'Presentations (.pptx, .ppt)',
     category: 'filetype'
   },
   {

@@ -28,6 +28,18 @@ function SuccessPage() {
   }, []);
 
   useEffect(() => {
+    // Check if user is authenticated, redirect to login if not
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        window.location.href = '/login';
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);

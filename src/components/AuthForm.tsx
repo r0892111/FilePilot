@@ -88,8 +88,9 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
     try {
       console.log("Initiating Google OAuth...");
 
-      // Get the current origin for redirect
-      const redirectTo = `${window.location.origin}/`;
+      // Get the current origin for redirect - use production URL if available
+      const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      const redirectTo = `${baseUrl}/`;
 
       console.log("Redirect URL:", redirectTo);
 

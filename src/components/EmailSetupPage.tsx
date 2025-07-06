@@ -166,8 +166,9 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     try {
       console.log("Initiating Gmail OAuth for email monitoring...");
 
-      // Get the current origin for redirect
-      const redirectTo = `${window.location.origin}/steps`;
+      // Get the current origin for redirect - use production URL if available
+      const baseUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
+      const redirectTo = `${baseUrl}/steps`;
 
       console.log("Redirect URL:", redirectTo);
 

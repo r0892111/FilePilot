@@ -59,8 +59,8 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
         },
         body: JSON.stringify({
           price_id: selectedPlan,
-          success_url: `${window.location.origin}/success`,
-          cancel_url: `${window.location.origin}/`,
+          success_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/success`,
+          cancel_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/`,
           mode: 'subscription'
         }),
       });

@@ -86,14 +86,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   useEffect(() => {
     checkUser();
   }, [user]);
-
-  useEffect(() => {
-    setSelectedDateISOString(customDate);
-
-    console.log("Selected date range:", selectedDateRange);
-    console.log("Selected date ISO string:", selectedDateISOString);
-  }, [selectedDateRange, customDate]);
-
+ 
   const checkUser = async () => {
     try {
       const {
@@ -141,6 +134,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
     }
   };
  */
+
   const getDateRangeDescription = (range: string) => {
     if (range === "custom") {
       return customDate
@@ -381,6 +375,7 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
   const getDateRangeIsoString = (range: string, customDate: string) => {
     if (range === "custom" && customDate) {
       // Use the selected custom date as ISO string
+      console.log("Custom date selected:", customDate);
       return new Date(customDate).toISOString();
     }
     if (range === "all") {
@@ -659,7 +654,12 @@ export function EmailSetupPage({ onComplete, onBack }: EmailSetupPageProps) {
                     <input
                       type="date"
                       value={customDate}
-                      onChange={(e) => setCustomDate(e.target.value)}
+                      onChange={(e) => {
+                        setCustomDate(e.target.value);
+                        setSelectedDateISOString(
+                          getDateRangeIsoString(e.target.value, customDate)
+                        );
+                      }}
                       max={new Date().toISOString().split("T")[0]}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />

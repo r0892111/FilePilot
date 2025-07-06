@@ -3,6 +3,19 @@ import { beforeAll, afterEach, afterAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { server } from './mocks/server';
 
+// Mock import.meta.env for Supabase client initialization
+Object.defineProperty(import.meta, 'env', {
+  value: {
+    VITE_SUPABASE_URL: 'https://test.supabase.co',
+    VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+    MODE: 'test',
+    DEV: false,
+    PROD: false,
+    SSR: false,
+  },
+  writable: true,
+});
+
 // Start server before all tests
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 

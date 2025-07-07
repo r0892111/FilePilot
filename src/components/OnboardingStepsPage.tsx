@@ -163,6 +163,11 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
 
   const loadOnboardingSteps = async (userId: string) => {
     try {
+      // First ensure onboarding is initialized
+      await supabase.rpc('initialize_user_onboarding_api', {
+        user_uuid: userId
+      });
+
       const { data, error } = await supabase
         .from('user_onboarding_steps')
         .select('*')
@@ -181,9 +186,6 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
           folder_selected: data.folder_selected,
           onboarding_completed: data.onboarding_completed
         });
-      } else {
-        // Initialize steps if they don't exist
-        await initializeOnboardingSteps(userId);
       }
     } catch (error) {
       console.error('Error loading onboarding steps:', error);
@@ -214,20 +216,6 @@ export function OnboardingStepsPage({ onComplete, onClose, isSubscribed: propIsS
       setOriginalSettings(mockSettings);
     } catch (error) {
       console.error('Error loading user settings:', error);
-    }
-  };
-
-  const initializeOnboardingSteps = async (userId: string) => {
-    try {
-      const { error } = await supabase.rpc('initialize_user_onboarding', {
-        user_uuid: userId
-      });
-
-      if (error) {
-        console.error('Error initializing onboarding steps:', error);
-      }
-    } catch (error) {
-      console.error('Error initializing onboarding steps:', error);
     }
   };
 

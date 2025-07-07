@@ -77,6 +77,8 @@ function App() {
           email: session.user.email || "",
           user_metadata: session.user.user_metadata,
         });
+        // Initialize onboarding when user signs in
+        initializeUserOnboarding(session.user.id);
         checkSubscriptionAndOnboarding(session.user.id);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
@@ -87,6 +89,22 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const initializeUserOnboarding = async (userId: string) => {
+    try {
+      const { error } = await supabase.rpc('initialize_user_onboarding_api', {
+        user_uuid: userId
+      });
+      
+      if (error) {
+        console.error('Error initializing onboarding:', error);
+      } else {
+        console.log('Onboarding initialized for user:', userId);
+      }
+    } catch (error) {
+      console.error('Error in onboarding initialization:', error);
+    }
+  };
 
   const checkUser = async () => {
     try {
@@ -99,6 +117,7 @@ function App() {
           email: session.user.email || "",
           user_metadata: session.user.user_metadata,
         });
+        await initializeUserOnboarding(session.user.id);
         await checkSubscriptionAndOnboarding(session.user.id);
       }
     } catch (error) {

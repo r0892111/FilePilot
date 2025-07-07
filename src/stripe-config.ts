@@ -12,8 +12,8 @@ export interface StripeProduct {
 
 export const stripeProducts: StripeProduct[] = [
   {
-    id: 'monthly-plan',
-    priceId: 'price_1RiEOYLPohnizGblQ49d7L7c', // Monthly plan price ID
+    id: 'prod_SdWpItIlATuOAa',
+    priceId: 'price_1RiFldQ8p3ifiRvumUboh0TR',
     name: 'Monthly Plan',
     description: 'Monthly subscription to FilePilot',
     mode: 'subscription',
@@ -29,8 +29,8 @@ export const stripeProducts: StripeProduct[] = [
     ]
   },
   {
-    id: 'yearly-plan',
-    priceId: 'price_1RiEPsLPohnizGbllcm2UZCw', // Yearly plan price ID
+    id: 'prod_SdWpznPxPtIRy4',
+    priceId: 'price_1RiFltQ8p3ifiRvuBU0zaQdG',
     name: 'Yearly Plan',
     description: 'Yearly subscription to FilePilot',
     mode: 'subscription',

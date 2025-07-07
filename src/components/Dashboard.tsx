@@ -141,6 +141,11 @@ export function Dashboard() {
 
   const loadOnboardingSteps = async (userId: string) => {
     try {
+      // First ensure onboarding is initialized
+      await supabase.rpc('initialize_user_onboarding_api', {
+        user_uuid: userId
+      });
+
       const { data, error } = await supabase
         .from('user_onboarding_steps')
         .select('*')

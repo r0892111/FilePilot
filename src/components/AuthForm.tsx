@@ -53,6 +53,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           setMessage({ type: "error", text: error.message });
         } else {
           setMessage({ type: "success", text: "Successfully logged in!" });
+          // Initialize onboarding for existing users on login
+          await initializeUserOnboarding();
           onSuccess();
         }
       } else {
@@ -71,6 +73,8 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
             type: "success",
             text: "Account created successfully!",
           });
+          // Initialize onboarding for new users
+          await initializeUserOnboarding();
           onSuccess();
         }
       }
@@ -78,6 +82,26 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
       setMessage({ type: "error", text: "An unexpected error occurred" });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const initializeUserOnboarding = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Call the initialization function
+        const { error } = await supabase.rpc('initialize_user_onboarding_api', {
+          user_uuid: session.user.id
+        });
+        
+        if (error) {
+          console.error('Error initializing onboarding:', error);
+        } else {
+          console.log('Onboarding initialized successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error in onboarding initialization:', error);
     }
   };
 

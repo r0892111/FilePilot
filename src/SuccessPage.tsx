@@ -21,7 +21,7 @@ const supabase = createClient(
 function SuccessPage() {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [countdown, setCountdown] = useState(6);
+  const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
     checkUserAndUpdatePayment();
@@ -161,7 +161,7 @@ function SuccessPage() {
 
           <p className="text-gray-600 mb-6">
             Thank you for your payment! Your FilePilot subscription is now active. 
-            We're preparing your account and you'll be redirected to complete the setup process in <strong>{countdown} seconds</strong>.
+            We're preparing your account and you'll be redirected to complete the setup process in {countdown} seconds.
           </p>
 
           <div className="bg-blue-50 rounded-lg p-6 mb-6">
@@ -185,7 +185,7 @@ function SuccessPage() {
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={goToSteps}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center"
             >
               Continue Setup Now
               <ArrowRight className="w-4 h-4 ml-2" />

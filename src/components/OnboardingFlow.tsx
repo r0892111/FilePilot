@@ -25,7 +25,7 @@ interface OnboardingFlowProps {
 export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string>(stripeProducts[1].priceId); // Default to yearly
+  const [selectedPlan, setSelectedPlan] = useState<string>(stripeProducts[1].priceId); // Default to yearly plan
 
   useEffect(() => {
     checkUser();
@@ -131,9 +131,9 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                   <div className="text-gray-500 mb-4">per {product.interval}</div>
                   
                   {product.name === 'Yearly Plan' && (
-                    <div className="text-sm text-green-600 font-medium mb-4">Save 2 months!</div>
+                    <div className="text-sm text-green-600 font-medium mb-4">Save over 15%!</div>
                   )}
-                </div>
+                      Best Value
                 
                 <ul className="space-y-3">
                   {product.features.map((feature, index) => (

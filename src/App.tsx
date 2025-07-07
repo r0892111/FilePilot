@@ -557,7 +557,7 @@ function App() {
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
                       <Star className="w-4 h-4 inline mr-1" />
-                      Most Popular
+                      Best Value
                     </div>
                   </div>
                 )}
@@ -568,7 +568,7 @@ function App() {
                   <div className="text-gray-500 mb-4">per {product.interval}</div>
                   
                   {index === 1 && (
-                    <div className="text-sm text-green-600 font-medium mb-4">Save 2 months!</div>
+                    <div className="text-sm text-green-600 font-medium mb-4">Save over 15%!</div>
                   )}
                 </div>
                 

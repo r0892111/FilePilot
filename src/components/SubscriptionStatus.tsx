@@ -114,13 +114,13 @@ export function SubscriptionStatus() {
     if (isActive && subscription.cancel_at_period_end) {
       return "Active (Canceling)";
     }
-    if (subscription.subscription_status!) {
+    if (subscription.subscription_status) {
       return (
         subscription.subscription_status.charAt(0).toUpperCase() +
         subscription.subscription_status.slice(1).replace("_", " ")
       );
     }
-    return "logged in again please.";
+    return "Unknown";
   };
 
   return (
@@ -130,7 +130,7 @@ export function SubscriptionStatus() {
           {getStatusIcon()}
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">
-              {product ? product.name : "Subscription"}
+              {product ? product.name : "FilePilot Subscription"}
             </p>
             <p className="text-xs text-gray-600">Status: {getStatusText()}</p>
           </div>

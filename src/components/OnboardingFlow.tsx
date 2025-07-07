@@ -133,8 +133,8 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                   {product.name === 'Yearly Plan' && (
                     <div className="text-sm text-green-600 font-medium mb-4">Save over 15%!</div>
                   )}
-                      Best Value
-                
+                </div>
+                      
                 <ul className="space-y-3">
                   {product.features.map((feature, index) => (
                     <li key={index} className="flex items-center text-sm">

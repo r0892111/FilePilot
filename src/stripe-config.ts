@@ -13,7 +13,7 @@ export interface StripeProduct {
 export const stripeProducts: StripeProduct[] = [
   {
     id: 'prod_monthly',
-    priceId: 'price_1RiFldQ8p3ifiRvumUboh0TR', // Replace with your actual monthly price ID
+    priceId: 'price_1RiFldQ8p3ifiRvumUboh0TR', // Monthly: €3.49
     name: 'Monthly Plan',
     description: 'Monthly subscription to FilePilot',
     mode: 'subscription',
@@ -30,7 +30,7 @@ export const stripeProducts: StripeProduct[] = [
   },
   {
     id: 'prod_yearly',
-    priceId: 'price_1RiFltQ8p3ifiRvuBU0zaQdG', // Replace with your actual yearly price ID
+    priceId: 'price_1RiFltQ8p3ifiRvuBU0zaQdG', // Yearly: €34.99
     name: 'Yearly Plan',
     description: 'Yearly subscription to FilePilot',
     mode: 'subscription',
@@ -47,6 +47,18 @@ export const stripeProducts: StripeProduct[] = [
     ]
   }
 ];
+
+// Debug function to log current configuration
+export function debugStripeConfig() {
+  console.log('Current Stripe Configuration:', {
+    products: stripeProducts.map(p => ({
+      name: p.name,
+      priceId: p.priceId,
+      price: p.price,
+      interval: p.interval
+    }))
+  });
+}
 
 export function getProductByPriceId(priceId: string): StripeProduct | undefined {
   return stripeProducts.find(product => product.priceId === priceId);

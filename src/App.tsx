@@ -19,6 +19,7 @@ import {
   Settings,
 } from "lucide-react";
 import { stripeProducts } from "./stripe-config";
+import { debugStripeConfig } from "./stripe-config";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
 import { IntegrationSlider } from "./components/IntegrationSlider";
 import { OnboardingFlow } from "./components/OnboardingFlow";
@@ -65,6 +66,7 @@ function App() {
 
   useEffect(() => {
     setIsVisible(true);
+    debugStripeConfig(); // Debug: Log current Stripe configuration
     checkUser();
 
     // Listen for auth state changes

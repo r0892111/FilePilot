@@ -23,7 +23,8 @@ import {
   Target,
   Loader2,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  HardDrive
 } from 'lucide-react';
 import { OnboardingStepsPage } from './OnboardingStepsPage';
 
@@ -52,7 +53,7 @@ interface SubscriptionData {
 
 interface DashboardStats {
   totalDocuments: number;
-  documentsThisMonth: number;
+  storageLeft: string;
   categoriesCreated: number;
   storageUsed: string;
 }
@@ -169,7 +170,7 @@ export function Dashboard() {
     setTimeout(() => {
       setStats({
         totalDocuments: 1247,
-        documentsThisMonth: 89,
+        storageLeft: '12.6 GB',
         categoriesCreated: 12,
         storageUsed: '2.4 GB'
       });
@@ -455,11 +456,11 @@ export function Dashboard() {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.documentsThisMonth}</p>
+                <p className="text-sm font-medium text-gray-600">Storage Left</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.storageLeft}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <HardDrive className="w-6 h-6 text-orange-600" />
               </div>
             </div>
           </div>
@@ -482,8 +483,8 @@ export function Dashboard() {
                 <p className="text-sm font-medium text-gray-600">Storage Used</p>
                 <p className="text-3xl font-bold text-gray-900">{stats.storageUsed}</p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Activity className="w-6 h-6 text-orange-600" />
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <Activity className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </div>

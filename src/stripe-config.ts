@@ -12,10 +12,10 @@ export interface StripeProduct {
 
 export const stripeProducts: StripeProduct[] = [
   {
-    id: 'prod_SYLAWoGK4jr6Us',
-    priceId: 'price_1RdEUUFzbUfm7BYRYrWGFeIX',
+    id: 'prod_SdVP8FvnIiKouA',
+    priceId: 'price_1RiEOYLPohnizGblQ49d7L7c',
     name: 'Monthly Plan',
-    description: 'Monthly recurring payment of 3.49',
+    description: 'Monthly subscription to FilePilot',
     mode: 'subscription',
     price: '€3.49',
     currency: 'eur',
@@ -29,10 +29,10 @@ export const stripeProducts: StripeProduct[] = [
     ]
   },
   {
-    id: 'prod_SYLCKiifxqz0cE',
-    priceId: 'price_1RdEVlFzbUfm7BYRWpZ2CXVR',
+    id: 'prod_SdVQdA76aEgPWS',
+    priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
     name: 'Yearly Plan',
-    description: 'Yearly recurring payment of 34.99',
+    description: 'Yearly subscription to FilePilot',
     mode: 'subscription',
     price: '€34.99',
     currency: 'eur',

@@ -45,11 +45,30 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
   const handlePayment = async () => {
     if (!user) return;
 
+    console.log('Starting payment process with plan:', selectedPlan);
+    console.log('User:', user.id);
+
     try {
       setIsLoading(true);
       
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        console.error('No session found');
+        alert('Please sign in again to continue');
+        return;
+      }
+
+      console.log('Session found, creating checkout...');
+
+      const requestBody = {
+        price_id: selectedPlan,
+        success_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/success`,
+        cancel_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/`,
+        mode: 'subscription'
+      };
+
+      console.log('Request body:', requestBody);
+      console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
 
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
         method: 'POST',
@@ -57,25 +76,25 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          price_id: selectedPlan,
-          success_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/success`,
-          cancel_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/`,
-          mode: 'subscription'
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (response.ok && data.url) {
+        console.log('Redirecting to Stripe checkout:', data.url);
         window.location.href = data.url;
       } else {
-        console.error('Checkout error:', data.error);
-        alert('Failed to create checkout session. Please try again.');
+        console.error('Checkout error:', data);
+        alert(`Failed to create checkout session: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      alert('An error occurred. Please try again.');
+      alert(`An error occurred: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }

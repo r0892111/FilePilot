@@ -12,38 +12,40 @@ export interface StripeProduct {
 
 export const stripeProducts: StripeProduct[] = [
   {
-    id: 'prod_monthly',
-    priceId: 'price_1RiFldQ8p3ifiRvumUboh0TR', // Monthly: €3.49
-    name: 'Monthly Plan',
-    description: 'Monthly subscription to FilePilot',
+    id: 'prod_SdbGhMJ8WLmUeQ',
+    priceId: 'price_1RiK45LPohnizGblGB41isNm',
+    name: 'Test Plan',
+    description: 'Test subscription for FilePilot',
     mode: 'subscription',
-    price: '€3.49',
+    price: '€0.00',
     currency: 'eur',
     interval: 'month',
     features: [
-      '1,000 emails per month',
-      'Automatic categorization',
+      'Full access to all features',
+      'Email attachment monitoring',
       'Google Drive integration',
-      'Basic search functionality',
-      'Email support'
+      'AI-powered categorization',
+      'Basic support'
     ]
   },
   {
-    id: 'prod_yearly',
-    priceId: 'price_1RiFltQ8p3ifiRvuBU0zaQdG', // Yearly: €34.99
-    name: 'Yearly Plan',
-    description: 'Yearly subscription to FilePilot',
+    id: 'prod_SdVQdA76aEgPWS',
+    priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
+    name: 'FilePilot Annual',
+    description: 'Annual subscription to FilePilot',
     mode: 'subscription',
     price: '€34.99',
     currency: 'eur',
     interval: 'year',
     features: [
-      'Unlimited emails',
+      'Unlimited email processing',
       'Advanced AI categorization',
       'Google Drive integration',
       'Smart search & filters',
       'Priority support',
-      'API access'
+      'API access',
+      'Custom folder structures',
+      'Advanced analytics'
     ]
   }
 ];

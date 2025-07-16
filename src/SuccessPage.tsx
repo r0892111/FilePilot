@@ -182,6 +182,17 @@ function SuccessPage() {
             </div>
           </div>
 
+          {/* Show selected plan info */}
+          <div className="bg-green-50 rounded-lg p-4 mb-6 border border-green-200">
+            <div className="flex items-center mb-2">
+              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+              <span className="font-medium text-green-900">Subscription Active</span>
+            </div>
+            <p className="text-sm text-green-700">
+              Your FilePilot subscription is now active and ready to organize your documents.
+            </p>
+          </div>
+
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={goToSteps}

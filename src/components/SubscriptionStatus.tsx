@@ -130,7 +130,7 @@ export function SubscriptionStatus() {
           {getStatusIcon()}
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">
-              {product ? product.name : "FilePilot Subscription"}
+              {product ? product.name : "FilePilot"}
             </p>
             <p className="text-xs text-gray-600">Status: {getStatusText()}</p>
           </div>
@@ -142,6 +142,11 @@ export function SubscriptionStatus() {
               {subscription.cancel_at_period_end ? "Ends" : "Renews"}:{" "}
               {periodEndDate}
             </p>
+            {product && (
+              <p className="text-xs text-gray-500">
+                {product.price}/{product.interval}
+              </p>
+            )}
           </div>
         )}
       </div>

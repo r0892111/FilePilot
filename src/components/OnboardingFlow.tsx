@@ -25,7 +25,9 @@ interface OnboardingFlowProps {
 export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [selectedPlan, setSelectedPlan] = useState<string>(stripeProducts[1].priceId); // Default to yearly plan
+  const [selectedPlan, setSelectedPlan] = useState<string>(
+    stripeProducts.find(p => p.name === 'FilePilot Annual')?.priceId || stripeProducts[0].priceId
+  ); // Default to annual plan
 
   useEffect(() => {
     checkUser();
@@ -137,20 +139,22 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                 }`}
                 onClick={() => setSelectedPlan(product.priceId)}
               >
-                {product.name === 'Yearly Plan' && (
+                {product.name === 'FilePilot Annual' && (
                   <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-xs font-semibold mb-4 inline-block">
                     <Crown className="w-3 h-3 inline mr-1" />
-                    Most Popular
+                    Recommended
                   </div>
                 )}
                 
                 <div className="text-center">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">{product.name}</h3>
                   <div className="text-3xl font-bold text-gray-900 mb-1">{product.price}</div>
-                  <div className="text-gray-500 mb-4">per {product.interval}</div>
+                  <div className="text-gray-500 mb-4">
+                    {product.interval ? `per ${product.interval}` : 'one-time'}
+                  </div>
                   
-                  {product.name === 'Yearly Plan' && (
-                    <div className="text-sm text-green-600 font-medium mb-4">Save over 15%!</div>
+                  {product.name === 'FilePilot Annual' && (
+                    <div className="text-sm text-green-600 font-medium mb-4">Complete solution!</div>
                   )}
                 </div>
                       

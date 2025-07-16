@@ -40,8 +40,13 @@ export function AuthPage({ mode, onAuthSuccess }: AuthPageProps) {
   };
 
   const handleAuthSuccess = () => {
-    // Show onboarding modal immediately after successful auth
-    setShowOnboarding(true);
+    // Only show onboarding for login, not signup
+    if (authMode === 'login') {
+      setShowOnboarding(true);
+    } else {
+      // For signup, redirect to homepage
+      window.location.href = '/';
+    }
   };
 
   const handleOnboardingComplete = () => {

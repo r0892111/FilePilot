@@ -75,7 +75,10 @@ export function AuthForm({ mode, onSuccess, onToggleMode }: AuthFormProps) {
           });
           // Initialize onboarding for new users
           await initializeUserOnboarding();
-          onSuccess();
+          // Small delay to show success message, then redirect
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
         }
       }
     } catch (error: any) {

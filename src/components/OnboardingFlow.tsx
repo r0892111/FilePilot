@@ -26,7 +26,7 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [selectedPlan, setSelectedPlan] = useState<string>(
-    stripeProducts.find(p => p.name === 'FilePilot Annual')?.priceId || stripeProducts[0].priceId
+    stripeProducts.find(p => p.interval === 'year')?.priceId || stripeProducts[0].priceId
   ); // Default to annual plan
 
   useEffect(() => {
@@ -140,10 +140,10 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                 }`}
                 onClick={() => setSelectedPlan(product.priceId)}
               >
-                {product.name === 'FilePilot Annual' && (
+                {product.interval === 'year' && (
                   <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-sm font-semibold mb-4 inline-block">
                     <Crown className="w-3 h-3 inline mr-1 flex-shrink-0" />
-                    Recommended
+                    {product.name === 'Test Plan' ? 'Free Trial' : 'Recommended'}
                   </div>
                 )}
                 
@@ -152,10 +152,13 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                   <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{product.price}</div>
                   <div className="text-gray-500 mb-4 text-sm sm:text-base">
                     {product.interval ? `per ${product.interval}` : 'one-time'}
+                    {product.name === 'Test Plan' && <span className="block text-green-600 font-medium">Free to start!</span>}
                   </div>
                   
-                  {product.name === 'FilePilot Annual' && (
-                    <div className="text-sm text-green-600 font-medium mb-4">Complete solution!</div>
+                  {product.interval === 'year' && (
+                    <div className="text-sm text-green-600 font-medium mb-4">
+                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Complete solution!'}
+                    </div>
                   )}
                 </div>
                       

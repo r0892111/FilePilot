@@ -159,9 +159,9 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                   )}
                 </div>
                       
-                <ul className="space-y-1 sm:space-y-3">
+                <ul className="space-y-1 sm:space-y-3 text-center sm:text-left">
                   {product.features.map((feature, index) => (
-                    <li key={index} className="flex items-start text-xs">
+                    <li key={index} className="flex items-start text-xs justify-center sm:justify-start">
                       <div className="w-3 h-3 bg-green-500 rounded-full flex items-center justify-center mr-2 flex-shrink-0 mt-0.5">
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                       </div>

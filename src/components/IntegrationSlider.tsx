@@ -148,18 +148,18 @@ export function IntegrationSlider() {
   };
 
   return (
-    <div className="w-full overflow-hidden bg-gradient-to-r from-gray-50 via-white to-gray-50 py-8">
+    <div className="w-full overflow-hidden bg-gradient-to-r from-gray-50 via-white to-gray-50 py-6 sm:py-8">
       <div className="relative">
         {/* Fade overlays for seamless effect */}
-        <div className="absolute left-0 top-0 w-24 h-full bg-gradient-to-r from-white via-white/90 to-transparent z-10 pointer-events-none"></div>
-        <div className="absolute right-0 top-0 w-24 h-full bg-gradient-to-l from-white via-white/90 to-transparent z-10 pointer-events-none"></div>
+        <div className="absolute left-0 top-0 w-12 sm:w-24 h-full bg-gradient-to-r from-white via-white/90 to-transparent z-10 pointer-events-none"></div>
+        <div className="absolute right-0 top-0 w-12 sm:w-24 h-full bg-gradient-to-l from-white via-white/90 to-transparent z-10 pointer-events-none"></div>
         
         {/* Scrolling container */}
         <div className="flex animate-scroll-left">
           {duplicatedIntegrations.map((integration, index) => (
             <div
               key={`${integration.name}-${index}`}
-              className="flex-shrink-0 mx-6 group cursor-pointer"
+              className="flex-shrink-0 mx-3 sm:mx-6 group cursor-pointer"
               onClick={() => handleLogoClick(integration)}
               role="button"
               tabIndex={0}
@@ -171,10 +171,10 @@ export function IntegrationSlider() {
                 }
               }}
             >
-              <div className="flex flex-col items-center space-y-3 p-4 rounded-xl transition-all duration-300 group-hover:bg-white group-hover:shadow-lg group-hover:scale-105 group-focus:bg-white group-focus:shadow-lg group-focus:scale-105 min-w-[120px]">
+              <div className="flex flex-col items-center space-y-2 sm:space-y-3 p-3 sm:p-4 rounded-xl transition-all duration-300 group-hover:bg-white group-hover:shadow-lg group-hover:scale-105 group-focus:bg-white group-focus:shadow-lg group-focus:scale-105 min-w-[100px] sm:min-w-[120px]">
                 {/* Logo/Icon container */}
                 <div 
-                  className="w-14 h-14 flex items-center justify-center rounded-lg transition-all duration-300 group-hover:shadow-md border border-gray-100 group-hover:border-gray-200"
+                  className="w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center rounded-lg transition-all duration-300 group-hover:shadow-md border border-gray-100 group-hover:border-gray-200"
                   style={{ backgroundColor: `${integration.color}08` }}
                 >
                   {renderIcon(integration)}
@@ -182,15 +182,15 @@ export function IntegrationSlider() {
                 
                 {/* Integration info */}
                 <div className="text-center">
-                  <div className="text-sm font-semibold text-gray-900 group-hover:text-gray-800 transition-colors mb-1">
+                  <div className="text-xs sm:text-sm font-semibold text-gray-900 group-hover:text-gray-800 transition-colors mb-1">
                     {integration.name}
                   </div>
-                  <div className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-w-28 leading-tight">
+                  <div className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-w-24 sm:max-w-28 leading-tight hidden sm:block">
                     {integration.description}
                   </div>
                   
                   {/* Category badge */}
-                  <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                  <div className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 sm:mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden sm:block ${
                     integration.category === 'platform' 
                       ? 'bg-blue-100 text-blue-700' 
                       : 'bg-green-100 text-green-700'
@@ -205,24 +205,24 @@ export function IntegrationSlider() {
       </div>
       
       {/* Integration stats */}
-      <div className="flex justify-center items-center mt-8 space-x-8">
-        <div className="inline-flex items-center px-4 py-2 bg-blue-50 rounded-full border border-blue-100">
+      <div className="flex flex-wrap justify-center items-center mt-6 sm:mt-8 gap-3 sm:gap-8">
+        <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-blue-50 rounded-full border border-blue-100">
           <Cloud className="w-4 h-4 text-blue-600 mr-2" />
-          <span className="text-sm font-medium text-blue-800">
+          <span className="text-xs sm:text-sm font-medium text-blue-800">
             4+ Cloud Platforms
           </span>
         </div>
         
-        <div className="inline-flex items-center px-4 py-2 bg-green-50 rounded-full border border-green-100">
+        <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-green-50 rounded-full border border-green-100">
           <FileText className="w-4 h-4 text-green-600 mr-2" />
-          <span className="text-sm font-medium text-green-800">
+          <span className="text-xs sm:text-sm font-medium text-green-800">
             50+ File Formats
           </span>
         </div>
         
-        <div className="inline-flex items-center px-4 py-2 bg-purple-50 rounded-full border border-purple-100">
+        <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-purple-50 rounded-full border border-purple-100">
           <div className="w-2 h-2 bg-purple-500 rounded-full mr-3 animate-pulse"></div>
-          <span className="text-sm font-medium text-purple-800">
+          <span className="text-xs sm:text-sm font-medium text-purple-800">
             Always Growing
           </span>
         </div>

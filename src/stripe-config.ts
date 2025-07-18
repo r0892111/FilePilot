@@ -31,7 +31,7 @@ export const stripeProducts: StripeProduct[] = [
   },
   {
     id: 'FilePilot-year',
-    priceId: 'REPLACE_WITH_ACTUAL_ANNUAL_PRICE_ID',
+    priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
     name: 'FilePilot Annual',
     description: 'Annual subscription to FilePilot - Complete document organization solution',
     mode: 'subscription',

@@ -550,16 +550,16 @@ function App() {
               <div
                 key={product.id}
                 className={`rounded-2xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${
-                  product.name === 'FilePilot Annual'
+                  product.name === 'FilePilot Annual' || product.interval === 'year'
                     ? 'border-blue-500 bg-blue-50 shadow-lg scale-105 relative'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                {product.name === 'FilePilot Annual' && (
+                {(product.name === 'FilePilot Annual' || product.interval === 'year') && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
                       <Star className="w-4 h-4 inline mr-1" />
-                      Recommended
+                      {product.name === 'Test Plan' ? 'Free Trial' : 'Recommended'}
                     </div>
                   </div>
                 )}
@@ -569,10 +569,13 @@ function App() {
                   <div className="text-4xl font-bold text-gray-900 mb-2">{product.price}</div>
                   <div className="text-gray-500 mb-4">
                     {product.interval ? `per ${product.interval}` : 'one-time'}
+                    {product.name === 'Test Plan' && <span className="block text-green-600 font-medium">Free to start!</span>}
                   </div>
                   
-                  {product.name === 'FilePilot Annual' && (
-                    <div className="text-sm text-green-600 font-medium mb-4">Best value for power users!</div>
+                  {product.interval === 'year' && (
+                    <div className="text-sm text-green-600 font-medium mb-4">
+                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Best value for power users!'}
+                    </div>
                   )}
                 </div>
                 
@@ -594,12 +597,12 @@ function App() {
                     }
                   }}
                   className={`w-full py-4 px-6 rounded-lg font-semibold transition-colors ${
-                    product.name === 'FilePilot Annual'
+                    product.interval === 'year'
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-900 hover:bg-gray-800 text-white'
                   }`}
                 >
-                  {user ? 'Get Started' : 'Sign Up & Get Started'}
+                  {user ? (product.name === 'Test Plan' ? 'Start Free Trial' : 'Get Started') : 'Sign Up & Get Started'}
                 </button>
               </div>
             ))}

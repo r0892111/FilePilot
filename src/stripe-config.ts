@@ -15,7 +15,7 @@ export const stripeProducts: StripeProduct[] = [
     id: 'prod_SdbGhMJ8WLmUeQ',
     priceId: 'price_1RiK45LPohnizGblGB41isNm',
     name: 'Test Plan',
-    description: 'Test subscription for FilePilot',
+    description: 'Test subscription for FilePilot - Full access to all features',
     mode: 'subscription',
     price: '€0.00',
     currency: 'eur',
@@ -25,14 +25,15 @@ export const stripeProducts: StripeProduct[] = [
       'Email attachment monitoring',
       'Google Drive integration',
       'AI-powered categorization',
-      'Basic support'
+      'Basic support',
+      'Unlimited email processing'
     ]
   },
   {
     id: 'prod_SdVQdA76aEgPWS',
     priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
     name: 'FilePilot Annual',
-    description: 'Annual subscription to FilePilot',
+    description: 'Annual subscription to FilePilot - Complete document organization solution',
     mode: 'subscription',
     price: '€34.99',
     currency: 'eur',
@@ -45,7 +46,8 @@ export const stripeProducts: StripeProduct[] = [
       'Priority support',
       'API access',
       'Custom folder structures',
-      'Advanced analytics'
+      'Advanced analytics',
+      'Best value - Save 40%'
     ]
   }
 ];

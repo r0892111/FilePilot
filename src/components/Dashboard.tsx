@@ -369,8 +369,8 @@ export function Dashboard() {
                     <Crown className="w-4 h-4 mr-1" />
                     {(() => {
                       const product = subscription.price_id ? getProductByPriceId(subscription.price_id) : null;
-                      return product?.name === 'FilePilot Annual' ? 'Annual' : 
-                             product?.name === 'Test Plan' ? 'Test' : 'Active';
+                      return product?.interval === 'year' ? 'Annual' : 
+                             product?.name === 'Test Plan' ? 'Free' : 'Active';
                     })()}
                   </div>
                 </div>

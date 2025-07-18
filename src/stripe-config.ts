@@ -12,7 +12,7 @@ export interface StripeProduct {
 
 export const stripeProducts: StripeProduct[] = [
   {
-    id: 'prod_SdbGhMJ8WLmUeQ',
+    id: 'testprod',
     priceId: 'price_1RiK45LPohnizGblGB41isNm',
     name: 'Test Plan',
     description: 'Test subscription for FilePilot - Full access to all features',
@@ -30,7 +30,7 @@ export const stripeProducts: StripeProduct[] = [
     ]
   },
   {
-    id: 'prod_SdVQdA76aEgPWS',
+    id: 'FilePilot-year',
     priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
     name: 'FilePilot Annual',
     description: 'Annual subscription to FilePilot - Complete document organization solution',

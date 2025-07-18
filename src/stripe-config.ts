@@ -13,7 +13,7 @@ export interface StripeProduct {
 export const stripeProducts: StripeProduct[] = [
   {
     id: 'testprod',
-    priceId: 'REPLACE_WITH_ACTUAL_TEST_PRICE_ID',
+    priceId: 'price_1RiK45LPohnizGblGB41isNm',
     name: 'Test Plan',
     description: 'Test subscription for FilePilot - Full access to all features',
     mode: 'subscription',

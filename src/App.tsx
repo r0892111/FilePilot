@@ -333,7 +333,7 @@ function App() {
         </div>
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-14 pb-16 sm:pb-24 relative min-w-0">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div
               className={`transition-all duration-1000 ${
                 isVisible
@@ -346,14 +346,14 @@ function App() {
                 Now available worldwide
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-6 leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-6 leading-tight">
                 Your digital copilot for{" "}
                 <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                   smart document management
                 </span>
               </h1>
 
-              <p className="text-lg sm:text-xl text-gray-300 mb-8 leading-relaxed">
+              <p className="text-base sm:text-lg lg:text-xl text-gray-300 mb-8 leading-relaxed">
                 FilePilot automatically scans and organizes your email
                 attachments in Google Drive with AI precision. Never search for
                 important documents again.
@@ -362,7 +362,7 @@ function App() {
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <button
                   onClick={handleGetStarted}
-                  className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-sm sm:text-base"
+                  className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   {hasActiveSubscription && allStepsCompleted ? (
                     <>
@@ -384,7 +384,7 @@ function App() {
 
                 <button 
                   onClick={scrollToPricing}
-                  className="group border-2 border-gray-600 hover:border-gray-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5 text-sm sm:text-base"
+                  className="group border-2 border-gray-600 hover:border-gray-500 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center hover:bg-white/5 text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
                   View Pricing
                   <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -400,7 +400,7 @@ function App() {
               }`}
             >
               <div className="relative">
-                <div className="bg-white rounded-2xl shadow-2xl p-6 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                <div className="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 transform rotate-1 sm:rotate-3 hover:rotate-0 transition-transform duration-500">
                   <div className="flex items-center mb-4">
                     <div className="flex space-x-2">
                       <div className="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -413,39 +413,39 @@ function App() {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex items-center p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center p-2 sm:p-3 bg-blue-50 rounded-lg">
                       <FileText className="w-5 h-5 text-blue-600 mr-3" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">
                           Contract_Q4_2024.pdf
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 hidden sm:block">
                           Automatically categorized as Contract
                         </div>
                       </div>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     </div>
 
-                    <div className="flex items-center p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-center p-2 sm:p-3 bg-green-50 rounded-lg">
                       <Mail className="w-5 h-5 text-green-600 mr-3" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">
                           Invoice_12345.pdf
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 hidden sm:block">
                           Saved to /Finance/2024
                         </div>
                       </div>
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     </div>
 
-                    <div className="flex items-center p-3 bg-purple-50 rounded-lg">
+                    <div className="flex items-center p-2 sm:p-3 bg-purple-50 rounded-lg">
                       <FileText className="w-5 h-5 text-purple-600 mr-3" />
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">
                           Presentation_Meeting.pptx
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 hidden sm:block">
                           Moved to /Projects/Q4
                         </div>
                       </div>
@@ -454,7 +454,7 @@ function App() {
                   </div>
                 </div>
 
-                <div className="absolute -top-4 -right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold animate-pulse">
+                <div className="absolute -top-2 -right-2 sm:-top-4 sm:-right-4 bg-blue-600 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold animate-pulse">
                   Live AI Processing
                 </div>
               </div>

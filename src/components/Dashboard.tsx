@@ -236,12 +236,11 @@ export function Dashboard() {
             </div>
             
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Subscription Required
+              Access Denied
             </h1>
             
             <p className="text-gray-600 mb-6">
-              This dashboard is only available to users with an active subscription. 
-              Please upgrade your account to access these features.
+              You don't have access to this dashboard. Please contact support if you believe this is an error.
             </p>
             
             <div className="space-y-3">
@@ -295,14 +294,14 @@ export function Dashboard() {
               </div>
               
               <button 
-                Access Denied
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <Settings className="w-5 h-5" />
               </button>
               
               <button
-                You don't have access to this dashboard. Please contact support if you believe this is an error.
+                onClick={handleSignOut}
+                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <LogOut className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Sign out</span>
@@ -408,17 +407,17 @@ export function Dashboard() {
           </div>
         </div>
 
-                  onClick={() => window.location.href = '/'}
+        {/* Recent Documents */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-                  Back to Home
+            <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Recent Documents</h2>
               <div className="flex items-center space-x-2">
                 <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  onClick={handleSignOut}
+                  <Filter className="w-4 h-4" />
                 </button>
                 <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  Sign Out
+                  <Download className="w-4 h-4" />
                 </button>
               </div>
             </div>

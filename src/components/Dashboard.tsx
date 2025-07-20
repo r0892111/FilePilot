@@ -257,7 +257,10 @@ export function Dashboard() {
               </button>
             </div>
           </div>
-          );
+        </div>
+      </div>
+    );
+  }
         
   return (
     <div className="min-h-screen bg-gray-50">
@@ -443,8 +446,4 @@ export function Dashboard() {
       </main>
     </div>
   );
-}
-    
-    )
-  }
 }

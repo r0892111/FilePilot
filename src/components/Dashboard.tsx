@@ -60,12 +60,10 @@ interface RecentDocument {
   date: string;
   status: 'processed' | 'processing' | 'failed';
 }
-
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalDocuments: 0,
     documentsThisMonth: 0,
@@ -259,23 +257,9 @@ export function Dashboard() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Onboarding Flow */}
-      {showOnboarding && (
-        <OnboardingStepsPage
-          onComplete={handleOnboardingComplete}
-          onClose={() => setShowOnboarding(false)}
-          isSubscribed={false}
-          mode="manage"
-        />
-      )}
-
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -300,6 +284,7 @@ export function Dashboard() {
               </button>
               
               <button
+                onClick={handleSignOut}
                 onClick={handleSignOut}
                 className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >
@@ -385,10 +370,10 @@ export function Dashboard() {
               Manage your email accounts and organization settings.
             </p>
             <button 
-              onClick={() => setShowOnboarding(true)}
+              onClick={() => alert('Settings coming soon!')}
               className="bg-white text-purple-600 px-4 py-2 rounded-lg font-medium hover:bg-purple-50 transition-colors"
             >
-              Manage Settings
+              Settings
             </button>
           </div>
 

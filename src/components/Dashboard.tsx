@@ -26,7 +26,6 @@ import {
   FolderOpen,
   HardDrive
 } from 'lucide-react';
-import { OnboardingStepsPage } from './OnboardingStepsPage';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -60,13 +59,14 @@ interface RecentDocument {
   date: string;
   status: 'processed' | 'processing' | 'failed';
 }
+
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalDocuments: 0,
-    documentsThisMonth: 0,
+    storageLeft: '0 GB',
     categoriesCreated: 0,
     storageUsed: '0 MB'
   });
@@ -209,10 +209,6 @@ export function Dashboard() {
     }
   };
 
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -257,8 +253,12 @@ export function Dashboard() {
               </button>
             </div>
           </div>
-          );
-          }
+        </div>
+      </div>
+    );
+  }
+
+  return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
@@ -278,6 +278,7 @@ export function Dashboard() {
               </div>
               
               <button 
+                onClick={() => alert('Settings coming soon!')}
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <Settings className="w-5 h-5" />
@@ -442,11 +443,4 @@ export function Dashboard() {
       </main>
     </div>
   );
-}
-    
-    )
-  }
-}
-    )
-  }
 }

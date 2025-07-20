@@ -1,73 +1,88 @@
-export interface StripeProduct {
+export interface PlanConfig {
   id: string;
-  priceId: string;
   name: string;
   description: string;
-  mode: 'payment' | 'subscription';
   price: string;
   currency: string;
   interval?: 'month' | 'year';
   features: string[];
+  isRecommended?: boolean;
+  isFree?: boolean;
 }
 
-export const stripeProducts: StripeProduct[] = [
+export const planConfigs: PlanConfig[] = [
   {
-    id: 'testprod',
-    priceId: 'price_1RiK45LPohnizGblGB41isNm',
-    name: 'Test Plan',
-    description: 'Test subscription for FilePilot - Full access to all features',
-    mode: 'subscription',
+    id: 'free-plan',
+    name: 'Free Plan',
+    description: 'Get started with basic document organization',
     price: '€0.00',
     currency: 'eur',
     interval: 'month',
     features: [
-      'Full access to all features',
-      'Email attachment monitoring',
+      'Basic email attachment monitoring',
       'Google Drive integration',
       'AI-powered categorization',
-      'Basic support',
-      'Unlimited email processing'
-    ]
+      'Up to 100 documents/month',
+      'Basic support'
+    ],
+    isFree: true
   },
   {
-    id: 'FilePilot-year',
-    priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
-    name: 'FilePilot Annual',
-    description: 'Annual subscription to FilePilot - Complete document organization solution',
-    mode: 'subscription',
-    price: '€34.99',
+    id: 'pro-plan',
+    name: 'Pro Plan',
+    description: 'Complete document organization solution for professionals',
+    price: '€9.99',
     currency: 'eur',
-    interval: 'year',
+    interval: 'month',
     features: [
       'Unlimited email processing',
       'Advanced AI categorization',
       'Google Drive integration',
       'Smart search & filters',
       'Priority support',
-      'API access',
       'Custom folder structures',
-      'Advanced analytics',
-      'Best value - Save 40%'
+      'Advanced analytics'
+    ],
+    isRecommended: true
+  },
+  {
+    id: 'annual-plan',
+    name: 'Annual Plan',
+    description: 'Best value - Save 20% with annual billing',
+    price: '€99.99',
+    currency: 'eur',
+    interval: 'year',
+    features: [
+      'Everything in Pro Plan',
+      'Save 20% with annual billing',
+      'Priority customer support',
+      'Early access to new features',
+      'Advanced integrations',
+      'Custom workflows',
+      'Dedicated account manager'
     ]
   }
 ];
 
 // Debug function to log current configuration
-export function debugStripeConfig() {
-  console.log('Current Stripe Configuration:', {
-    products: stripeProducts.map(p => ({
+export function debugPlanConfig() {
+  console.log('Current Plan Configuration:', {
+    plans: planConfigs.map(p => ({
       name: p.name,
-      priceId: p.priceId,
       price: p.price,
       interval: p.interval
     }))
   });
 }
 
-export function getProductByPriceId(priceId: string): StripeProduct | undefined {
-  return stripeProducts.find(product => product.priceId === priceId);
+export function getPlanById(id: string): PlanConfig | undefined {
+  return planConfigs.find(plan => plan.id === id);
 }
 
-export function getProductById(id: string): StripeProduct | undefined {
-  return stripeProducts.find(product => product.id === id);
+export function getRecommendedPlan(): PlanConfig | undefined {
+  return planConfigs.find(plan => plan.isRecommended);
+}
+
+export function getFreePlan(): PlanConfig | undefined {
+  return planConfigs.find(plan => plan.isFree);
 }

@@ -27,7 +27,6 @@ import {
   HardDrive
 } from 'lucide-react';
 import { OnboardingStepsPage } from './OnboardingStepsPage';
-import { getProductByPriceId } from '../stripe-config';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -43,13 +42,6 @@ interface User {
     first_name?: string;
     last_name?: string;
   };
-}
-
-interface SubscriptionData {
-  subscription_status: string;
-  price_id: string | null;
-  current_period_end: number | null;
-  cancel_at_period_end: boolean;
 }
 
 interface DashboardStats {
@@ -69,25 +61,11 @@ interface RecentDocument {
   status: 'processed' | 'processing' | 'failed';
 }
 
-interface OnboardingStepsData {
-  payment_completed: boolean;
-  email_connected: boolean;
-  folder_selected: boolean;
-  onboarding_completed: boolean;
-}
-
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData>({
-    payment_completed: false,
-    email_connected: false,
-    folder_selected: false,
-    onboarding_completed: false
-  });
   const [stats, setStats] = useState<DashboardStats>({
     totalDocuments: 0,
     documentsThisMonth: 0,
@@ -97,10 +75,10 @@ export function Dashboard() {
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
 
   useEffect(() => {
-    checkUserAndSubscription();
+    checkUser();
   }, []);
 
-  const checkUserAndSubscription = async () => {
+  const checkUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -115,59 +93,14 @@ export function Dashboard() {
         user_metadata: session.user.user_metadata
       });
 
-      // Check subscription status
-      const { data: subscriptionData, error } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching subscription:', error);
-        setIsAuthorized(false);
-      } else if (subscriptionData && subscriptionData.subscription_status === 'active') {
-        setSubscription(subscriptionData);
-        setIsAuthorized(true);
-        await loadOnboardingSteps(session.user.id);
-        loadDashboardData();
-      } else {
-        setIsAuthorized(false);
-      }
+      // For now, allow all authenticated users
+      setIsAuthorized(true);
+      loadDashboardData();
     } catch (error) {
-      console.error('Error checking user and subscription:', error);
+      console.error('Error checking user:', error);
       setIsAuthorized(false);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadOnboardingSteps = async (userId: string) => {
-    try {
-      // First ensure onboarding is initialized
-      await supabase.rpc('initialize_user_onboarding_api', {
-        user_uuid: userId
-      });
-
-      const { data, error } = await supabase
-        .from('user_onboarding_steps')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading onboarding steps:', error);
-        return;
-      }
-
-      if (data) {
-        setOnboardingSteps({
-          payment_completed: data.payment_completed,
-          email_connected: data.email_connected,
-          folder_selected: data.folder_selected,
-          onboarding_completed: data.onboarding_completed
-        });
-      }
-    } catch (error) {
-      console.error('Error loading onboarding steps:', error);
     }
   };
 
@@ -280,18 +213,7 @@ export function Dashboard() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    // Refresh onboarding steps
-    if (user) {
-      loadOnboardingSteps(user.id);
-    }
   };
-
-  const setupComplete = onboardingSteps.onboarding_completed;
-  const completedSteps = [
-    onboardingSteps.payment_completed,
-    onboardingSteps.email_connected,
-    onboardingSteps.folder_selected
-  ].filter(Boolean).length;
 
   if (isLoading) {
     return (
@@ -350,7 +272,7 @@ export function Dashboard() {
         <OnboardingStepsPage
           onComplete={handleOnboardingComplete}
           onClose={() => setShowOnboarding(false)}
-          isSubscribed={true}
+          isSubscribed={false}
           mode="manage"
         />
       )}
@@ -363,18 +285,6 @@ export function Dashboard() {
             <div className="flex items-center">
               <FileText className="w-8 h-8 text-blue-600 mr-3" />
               <span className="text-xl font-bold text-gray-900">FilePilot</span>
-              {subscription && (
-                <div className="ml-4 px-3 py-1 bg-blue-100 rounded-full">
-                  <div className="flex items-center text-blue-800 text-sm font-medium">
-                    <Crown className="w-4 h-4 mr-1" />
-                    {(() => {
-                      const product = subscription.price_id ? getProductByPriceId(subscription.price_id) : null;
-                      return product?.interval === 'year' ? 'Annual' : 
-                             product?.name === 'Test Plan' ? 'Free' : 'Active';
-                    })()}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* User Menu */}
@@ -385,15 +295,14 @@ export function Dashboard() {
               </div>
               
               <button 
-                onClick={() => setShowOnboarding(true)}
+                Access Denied
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <Settings className="w-5 h-5" />
               </button>
               
               <button
-                onClick={handleSignOut}
-                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+                You don't have access to this dashboard. Please contact support if you believe this is an error.
               >
                 <LogOut className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Sign out</span>
@@ -411,45 +320,9 @@ export function Dashboard() {
             Welcome back, {user ? getUserDisplayName(user) : 'User'}!
           </h1>
           <p className="text-gray-600">
-            {setupComplete 
-              ? "Here's what's happening with your document organization today."
-              : `Setup progress: ${completedSteps}/3 steps completed. Click the settings icon to continue.`
-            }
+            Here's what's happening with your document organization today.
           </p>
         </div>
-
-        {/* Setup Progress (if not complete) */}
-        {!setupComplete && (
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 mb-8 border border-blue-200">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Complete Your Setup</h2>
-                <p className="text-gray-600">Finish configuring your account to start organizing email attachments</p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">
-                  {completedSteps}/3
-                </div>
-                <div className="text-sm text-gray-500">Steps completed</div>
-              </div>
-            </div>
-            
-            <div className="w-full bg-white/50 rounded-full h-3 mb-6">
-              <div 
-                className="bg-gradient-to-r from-blue-400 to-green-400 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${(completedSteps / 3) * 100}%` }}
-              ></div>
-            </div>
-
-            <button
-              onClick={() => setShowOnboarding(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center"
-            >
-              Continue Setup
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </button>
-          </div>
-        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -510,16 +383,13 @@ export function Dashboard() {
               <Settings className="w-6 h-6" />
             </div>
             <p className="text-purple-100 mb-4">
-              {setupComplete 
-                ? "Manage your email accounts and organization settings."
-                : "Complete your setup to start organizing email attachments."
-              }
+              Manage your email accounts and organization settings.
             </p>
             <button 
               onClick={() => setShowOnboarding(true)}
               className="bg-white text-purple-600 px-4 py-2 rounded-lg font-medium hover:bg-purple-50 transition-colors"
             >
-              {setupComplete ? 'Manage Settings' : 'Complete Setup'}
+              Manage Settings
             </button>
           </div>
 
@@ -529,29 +399,26 @@ export function Dashboard() {
               <Zap className="w-6 h-6" />
             </div>
             <p className="text-green-100 mb-4">
-              {setupComplete 
-                ? "Your AI assistant is actively organizing email attachments."
-                : "Set up your accounts to enable AI document processing."
-              }
+              Your AI assistant is actively organizing email attachments.
             </p>
             <div className="flex items-center text-green-200">
-              <div className={`w-2 h-2 rounded-full mr-2 ${setupComplete ? 'bg-green-300 animate-pulse' : 'bg-green-400'}`}></div>
-              <span className="text-sm font-medium">{setupComplete ? 'Active' : 'Waiting for setup'}</span>
+              <div className="w-2 h-2 rounded-full mr-2 bg-green-300 animate-pulse"></div>
+              <span className="text-sm font-medium">Active</span>
             </div>
           </div>
         </div>
 
-        {/* Recent Documents */}
+                  onClick={() => window.location.href = '/'}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
+                  Back to Home
               <h2 className="text-lg font-semibold text-gray-900">Recent Documents</h2>
               <div className="flex items-center space-x-2">
                 <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  <Filter className="w-4 h-4" />
+                  onClick={handleSignOut}
                 </button>
                 <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                  <Download className="w-4 h-4" />
+                  Sign Out
                 </button>
               </div>
             </div>

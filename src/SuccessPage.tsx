@@ -12,7 +12,6 @@ import {
   Home,
   CheckCircle,
 } from "lucide-react";
-import { SubscriptionStatus } from "./components/SubscriptionStatus";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -25,7 +24,7 @@ function SuccessPage() {
   const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
-    checkUserAndUpdatePayment();
+    checkUser();
   }, []);
 
   useEffect(() => {
@@ -45,20 +44,17 @@ function SuccessPage() {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else if (user) {
-      window.location.href = "/steps";
+      window.location.href = "/dashboard";
     }
   }, [countdown, user]);
 
-  const checkUserAndUpdatePayment = async () => {
+  const checkUser = async () => {
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-
-        // Mark payment as completed in onboarding steps
-        await updatePaymentStep(session.user.id);
       } else {
         // Redirect to login if not authenticated
         window.location.href = "/login";
@@ -71,29 +67,12 @@ function SuccessPage() {
     }
   };
 
-  const updatePaymentStep = async (userId: string) => {
-    try {
-      // Update payment step as completed
-      const { error } = await supabase.rpc('update_onboarding_step', {
-        user_uuid: userId,
-        step_name: 'payment',
-        completed: true
-      });
-
-      if (error) {
-        console.error("Error updating payment step:", error);
-      }
-    } catch (error) {
-      console.error("Error updating payment step:", error);
-    }
-  };
-
   const goHome = () => {
     window.location.href = "/";
   };
 
-  const goToSteps = () => {
-    window.location.href = "/steps";
+  const goToDashboard = () => {
+    window.location.href = "/dashboard";
   };
 
   if (isLoading || !user) {
@@ -101,7 +80,7 @@ function SuccessPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Processing your payment...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -118,7 +97,6 @@ function SuccessPage() {
               <span className="text-xl font-bold text-gray-900">FilePilot</span>
             </div>
             <div className="flex items-center space-x-4">
-              <SubscriptionStatus />
               <button
                 onClick={goHome}
                 className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
@@ -139,14 +117,14 @@ function SuccessPage() {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Payment Successful! 🎉
+            Welcome to FilePilot! 🎉
           </h1>
 
-          <p className="text-xl text-gray-600 mb-2">Welcome to FilePilot</p>
+          <p className="text-xl text-gray-600 mb-2">Your account is ready</p>
 
           <div className="inline-flex items-center px-4 py-2 bg-green-100 rounded-full text-green-800 text-sm font-medium">
             <Check className="w-4 h-4 mr-2" />
-            Your subscription is now active
+            Account successfully created
           </div>
         </div>
 
@@ -161,8 +139,7 @@ function SuccessPage() {
           </h2>
 
           <p className="text-gray-600 mb-6">
-            Thank you for your payment! Your FilePilot subscription is now active. 
-            We're preparing your account and you'll be redirected to complete the setup process in {countdown} seconds.
+            Welcome to FilePilot! Your account is ready and you'll be redirected to your dashboard in {countdown} seconds.
           </p>
 
           <div className="bg-blue-50 rounded-lg p-6 mb-6">
@@ -183,23 +160,12 @@ function SuccessPage() {
             </div>
           </div>
 
-          {/* Show selected plan info */}
-          <div className="bg-green-50 rounded-lg p-4 mb-6 border border-green-200">
-            <div className="flex items-center mb-2">
-              <Check className="w-5 h-5 text-green-600 mr-2" />
-              <span className="font-medium text-green-900">Subscription Active</span>
-            </div>
-            <p className="text-sm text-green-700">
-              Your FilePilot subscription is now active and ready to organize your documents.
-            </p>
-          </div>
-
           <div className="flex items-center justify-center space-x-4">
             <button
-              onClick={goToSteps}
+              onClick={goToDashboard}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors flex items-center"
             >
-              Continue Setup Now
+              Go to Dashboard
               <ArrowRight className="w-4 h-4 ml-2" />
             </button>
           </div>

@@ -18,11 +18,9 @@ import {
   LayoutDashboard,
   Settings,
 } from "lucide-react";
-import { stripeProducts } from "./stripe-config";
-import { debugStripeConfig } from "./stripe-config";
-import { SubscriptionStatus } from "./components/SubscriptionStatus";
+import { planConfigs } from "./stripe-config";
+import { debugPlanConfig } from "./stripe-config";
 import { IntegrationSlider } from "./components/IntegrationSlider";
-import { OnboardingFlow } from "./components/OnboardingFlow";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -40,33 +38,14 @@ interface User {
   };
 }
 
-interface SubscriptionData {
-  subscription_status: string;
-  price_id: string | null;
-  current_period_end: number | null;
-  cancel_at_period_end: boolean;
-}
-
-interface OnboardingStepsData {
-  payment_completed: boolean;
-  email_connected: boolean;
-  folder_selected: boolean;
-  onboarding_completed: boolean;
-}
-
 function App() {
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(
-    null
-  );
-  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
-    debugStripeConfig(); // Debug: Log current Stripe configuration
+    debugPlanConfig(); // Debug: Log current plan configuration
     checkUser();
 
     // Listen for auth state changes
@@ -79,34 +58,13 @@ function App() {
           email: session.user.email || "",
           user_metadata: session.user.user_metadata,
         });
-        // Initialize onboarding when user signs in
-        initializeUserOnboarding(session.user.id);
-        checkSubscriptionAndOnboarding(session.user.id);
       } else if (event === "SIGNED_OUT") {
         setUser(null);
-        setSubscription(null);
-        setOnboardingSteps(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const initializeUserOnboarding = async (userId: string) => {
-    try {
-      const { error } = await supabase.rpc('initialize_user_onboarding_api', {
-        user_uuid: userId
-      });
-      
-      if (error) {
-        console.error('Error initializing onboarding:', error);
-      } else {
-        console.log('Onboarding initialized for user:', userId);
-      }
-    } catch (error) {
-      console.error('Error in onboarding initialization:', error);
-    }
-  };
 
   const checkUser = async () => {
     try {
@@ -119,8 +77,6 @@ function App() {
           email: session.user.email || "",
           user_metadata: session.user.user_metadata,
         });
-        await initializeUserOnboarding(session.user.id);
-        await checkSubscriptionAndOnboarding(session.user.id);
       }
     } catch (error) {
       console.error("Error checking user:", error);
@@ -129,55 +85,9 @@ function App() {
     }
   };
 
-  const checkSubscriptionAndOnboarding = async (userId: string) => {
-    try {
-      // Check subscription status
-      const { data: subscriptionData, error: subError } = await supabase
-        .from("stripe_user_subscriptions")
-        .select(
-          "subscription_status, price_id, current_period_end, cancel_at_period_end"
-        )
-        .maybeSingle();
-
-      if (subError) {
-        console.error("Error fetching subscription:", subError);
-      } else {
-        setSubscription(subscriptionData);
-      }
-
-      // Check onboarding steps
-      const { data: stepsData, error: stepsError } = await supabase
-        .from("user_onboarding_steps")
-        .select("payment_completed, email_connected, folder_selected, onboarding_completed")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (stepsError && stepsError.code !== 'PGRST116') {
-        console.error("Error fetching onboarding steps:", stepsError);
-      } else {
-        setOnboardingSteps(stepsData);
-      }
-
-      // Handle redirects based on subscription and onboarding status
-      if (subscriptionData && subscriptionData.subscription_status === 'active') {
-        if (stepsData && stepsData.onboarding_completed) {
-          // All steps completed - redirect to dashboard
-          window.location.href = '/dashboard';
-        } else {
-          // Has subscription but steps not completed - redirect to steps
-          window.location.href = '/steps';
-        }
-      }
-    } catch (error) {
-      console.error("Error checking subscription and onboarding:", error);
-    }
-  };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setSubscription(null);
-    setOnboardingSteps(null);
   };
 
   const scrollToPricing = () => {
@@ -194,20 +104,8 @@ function App() {
       return;
     }
 
-    // Check if user has active subscription
-    if (subscription && subscription.subscription_status === "active") {
-      // Check onboarding completion
-      if (onboardingSteps && onboardingSteps.onboarding_completed) {
-        // User has subscription and completed onboarding - go to dashboard
-        window.location.href = "/dashboard";
-      } else {
-        // User has subscription but needs to complete steps
-        window.location.href = "/steps";
-      }
-    } else {
-      // User needs to subscribe, show onboarding flow
-      setShowOnboarding(true);
-    }
+    // For now, just redirect to dashboard
+    window.location.href = "/dashboard";
   };
 
   // Helper function to get user's display name
@@ -228,11 +126,6 @@ function App() {
     return user.email.split("@")[0];
   };
 
-  const hasActiveSubscription =
-    subscription && subscription.subscription_status === "active";
-
-  const allStepsCompleted = onboardingSteps && onboardingSteps.onboarding_completed;
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -243,18 +136,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Onboarding Flow */}
-      {showOnboarding && (
-        <OnboardingFlow
-          onComplete={() => {
-            setShowOnboarding(false);
-            // After payment completion, redirect to success page
-            window.location.href = "/success";
-          }}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 min-w-0">
         <div
@@ -275,28 +156,14 @@ function App() {
             <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
               {user ? (
                 <>
-                  <div className="hidden md:block">
-                    <SubscriptionStatus />
-                  </div>
                   <div className="flex items-center space-x-2 sm:space-x-4">
-                    {hasActiveSubscription && allStepsCompleted && (
-                      <a
-                        href="/dashboard"
-                        className="hidden sm:flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
-                      >
-                        <LayoutDashboard className="w-4 h-4 mr-1" />
-                        Dashboard
-                      </a>
-                    )}
-                    {hasActiveSubscription && !allStepsCompleted && (
-                      <a
-                        href="/steps"
-                        className="hidden sm:flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
-                      >
-                        <Settings className="w-4 h-4 mr-1" />
-                        Complete Setup
-                      </a>
-                    )}
+                    <a
+                      href="/dashboard"
+                      className="hidden sm:flex items-center text-white/80 hover:text-white transition-colors text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10"
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-1" />
+                      Dashboard
+                    </a>
                     <div className="hidden sm:flex items-center text-white">
                       <User className="w-5 h-5 mr-2 text-white/80" />
                       <span className="text-sm font-medium">
@@ -364,22 +231,8 @@ function App() {
                   onClick={handleGetStarted}
                   className="group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center text-sm sm:text-base min-h-[48px] touch-manipulation"
                 >
-                  {hasActiveSubscription && allStepsCompleted ? (
-                    <>
-                      <LayoutDashboard className="w-5 h-5 mr-2" />
-                      Go to Dashboard
-                    </>
-                  ) : hasActiveSubscription && !allStepsCompleted ? (
-                    <>
-                      <Settings className="w-5 h-5 mr-2" />
-                      Complete Setup
-                    </>
-                  ) : (
-                    <>
-                      Start Organizing Now
-                      <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
+                  Start Organizing Now
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 <button 
@@ -546,41 +399,41 @@ function App() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
-            {stripeProducts.map((product, index) => (
+            {planConfigs.map((plan, index) => (
               <div
-                key={product.id}
+                key={plan.id}
                 className={`rounded-2xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${
-                  product.name === 'FilePilot Annual' || product.interval === 'year'
+                  plan.isRecommended
                     ? 'border-blue-500 bg-blue-50 shadow-lg scale-105 relative'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                {(product.name === 'FilePilot Annual' || product.interval === 'year') && (
+                {plan.isRecommended && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
                       <Star className="w-4 h-4 inline mr-1" />
-                      {product.name === 'Test Plan' ? 'Free Trial' : 'Recommended'}
+                      Recommended
                     </div>
                   </div>
                 )}
                 
                 <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">{product.name}</h3>
-                  <div className="text-4xl font-bold text-gray-900 mb-2">{product.price}</div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">{plan.name}</h3>
+                  <div className="text-4xl font-bold text-gray-900 mb-2">{plan.price}</div>
                   <div className="text-gray-500 mb-4">
-                    {product.interval ? `per ${product.interval}` : 'one-time'}
-                    {product.name === 'Test Plan' && <span className="block text-green-600 font-medium">Free to start!</span>}
+                    {plan.interval ? `per ${plan.interval}` : 'one-time'}
+                    {plan.isFree && <span className="block text-green-600 font-medium">Free to start!</span>}
                   </div>
                   
-                  {product.interval === 'year' && (
+                  {plan.interval === 'year' && (
                     <div className="text-sm text-green-600 font-medium mb-4">
-                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Best value for power users!'}
+                      Best value for power users!
                     </div>
                   )}
                 </div>
                 
                 <ul className="space-y-4 mb-8">
-                  {product.features.map((feature, featureIndex) => (
+                  {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-center">
                       <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
                       <span className="text-gray-600">{feature}</span>
@@ -590,19 +443,16 @@ function App() {
                 
                 <button
                   onClick={() => {
-                    if (!user) {
-                      window.location.href = "/signup";
-                    } else {
-                      setShowOnboarding(true);
-                    }
+                    // TODO: Implement payment flow
+                    alert(`Selected ${plan.name} - Payment integration coming soon!`);
                   }}
                   className={`w-full py-4 px-6 rounded-lg font-semibold transition-colors ${
-                    product.interval === 'year'
+                    plan.isRecommended
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-900 hover:bg-gray-800 text-white'
                   }`}
                 >
-                  {user ? (product.name === 'Test Plan' ? 'Start Free Trial' : 'Get Started') : 'Sign Up & Get Started'}
+                  {plan.isFree ? 'Start Free Trial' : 'Get Started'}
                 </button>
               </div>
             ))}

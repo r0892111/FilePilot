@@ -3,8 +3,10 @@ export interface PlanConfig {
   name: string;
   description: string;
   price: string;
+  priceId: string;
   currency: string;
   interval?: 'month' | 'year';
+  mode: 'payment' | 'subscription';
   features: string[];
   isRecommended?: boolean;
   isFree?: boolean;
@@ -12,28 +14,30 @@ export interface PlanConfig {
 
 export const planConfigs: PlanConfig[] = [
   {
-    id: 'free-plan',
-    name: 'Free Plan',
-    description: 'Get started with basic document organization',
+    id: 'testprod',
+    name: 'Test Product',
+    description: 'Test product for development',
     price: '€0.00',
+    priceId: 'price_1RiK45LPohnizGblGB41isNm',
     currency: 'eur',
-    interval: 'month',
+    mode: 'subscription',
     features: [
-      'Basic email attachment monitoring',
+      'Test features',
       'Google Drive integration',
       'AI-powered categorization',
-      'Up to 100 documents/month',
       'Basic support'
     ],
     isFree: true
   },
   {
-    id: 'pro-plan',
-    name: 'Pro Plan',
-    description: 'Complete document organization solution for professionals',
-    price: '€9.99',
+    id: 'FilePilot-year',
+    name: 'FilePilot Annual',
+    description: 'Complete document organization solution - Annual plan',
+    price: '€34.99',
+    priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
     currency: 'eur',
-    interval: 'month',
+    interval: 'year',
+    mode: 'subscription',
     features: [
       'Unlimited email processing',
       'Advanced AI categorization',
@@ -41,26 +45,10 @@ export const planConfigs: PlanConfig[] = [
       'Smart search & filters',
       'Priority support',
       'Custom folder structures',
-      'Advanced analytics'
+      'Advanced analytics',
+      'Save with annual billing'
     ],
     isRecommended: true
-  },
-  {
-    id: 'annual-plan',
-    name: 'Annual Plan',
-    description: 'Best value - Save 20% with annual billing',
-    price: '€99.99',
-    currency: 'eur',
-    interval: 'year',
-    features: [
-      'Everything in Pro Plan',
-      'Save 20% with annual billing',
-      'Priority customer support',
-      'Early access to new features',
-      'Advanced integrations',
-      'Custom workflows',
-      'Dedicated account manager'
-    ]
   }
 ];
 
@@ -70,7 +58,9 @@ export function debugPlanConfig() {
     plans: planConfigs.map(p => ({
       name: p.name,
       price: p.price,
-      interval: p.interval
+      interval: p.interval,
+      priceId: p.priceId,
+      mode: p.mode
     }))
   });
 }

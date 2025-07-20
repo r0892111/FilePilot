@@ -26,6 +26,7 @@ import {
   FolderOpen,
   HardDrive
 } from 'lucide-react';
+import { SubscriptionStatus } from './SubscriptionStatus';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -276,6 +277,8 @@ export function Dashboard() {
                 <User className="w-4 h-4 mr-2" />
                 Welcome, {user ? getUserDisplayName(user) : 'User'}
               </div>
+              
+              <SubscriptionStatus />
               
               <button 
                 onClick={() => alert('Settings coming soon!')}

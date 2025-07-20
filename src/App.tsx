@@ -21,6 +21,8 @@ import {
 import { planConfigs } from "./stripe-config";
 import { debugPlanConfig } from "./stripe-config";
 import { IntegrationSlider } from "./components/IntegrationSlider";
+import { CheckoutButton } from "./components/CheckoutButton";
+import { SubscriptionStatus } from "./components/SubscriptionStatus";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -164,7 +166,10 @@ function App() {
                       <LayoutDashboard className="w-4 h-4 mr-1" />
                       Dashboard
                     </a>
-                    <div className="hidden sm:flex items-center text-white">
+                    <div className="hidden md:flex items-center space-x-4">
+                      <SubscriptionStatus className="text-white/90" />
+                    </div>
+                    <div className="hidden lg:flex items-center text-white">
                       <User className="w-5 h-5 mr-2 text-white/80" />
                       <span className="text-sm font-medium">
                         Welcome, {getUserDisplayName(user)}
@@ -441,11 +446,10 @@ function App() {
                   ))}
                 </ul>
                 
-                <button
-                  onClick={() => {
-                    // TODO: Implement payment flow
-                    alert(`Selected ${plan.name} - Payment integration coming soon!`);
-                  }}
+                <CheckoutButton
+                  priceId={plan.priceId}
+                  mode={plan.mode}
+                  planName={plan.name}
                   className={`w-full py-4 px-6 rounded-lg font-semibold transition-colors ${
                     plan.isRecommended
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -453,7 +457,7 @@ function App() {
                   }`}
                 >
                   {plan.isFree ? 'Start Free Trial' : 'Get Started'}
-                </button>
+                </CheckoutButton>
               </div>
             ))}
           </div>

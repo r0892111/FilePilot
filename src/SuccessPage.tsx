@@ -12,6 +12,7 @@ import {
   Home,
   CheckCircle,
 } from "lucide-react";
+import { SubscriptionStatus } from "./components/SubscriptionStatus";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -158,6 +159,11 @@ function SuccessPage() {
                 <span>Start automatic document organization</span>
               </div>
             </div>
+          </div>
+
+          <div className="bg-green-50 rounded-lg p-6 mb-6">
+            <h3 className="font-semibold text-green-900 mb-3">Your Subscription</h3>
+            <SubscriptionStatus />
           </div>
 
           <div className="flex items-center justify-center space-x-4">

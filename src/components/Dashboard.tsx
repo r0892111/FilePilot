@@ -257,7 +257,8 @@ export function Dashboard() {
               </button>
             </div>
           </div>
-
+          );
+        
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -284,7 +285,6 @@ export function Dashboard() {
               </button>
               
               <button
-                onClick={handleSignOut}
                 onClick={handleSignOut}
                 className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
               >

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Crown, Clock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { planConfigs } from '../stripe-config';
+import React, { useEffect, useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Crown, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { getProductByPriceId } from "../stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -15,134 +15,141 @@ interface SubscriptionData {
   cancel_at_period_end: boolean;
 }
 
-interface SubscriptionStatusProps {
-  className?: string;
-}
-
-export function SubscriptionStatus({ className = '' }: SubscriptionStatusProps) {
-  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+export function SubscriptionStatus() {
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSubscriptionStatus();
+    fetchSubscription();
   }, []);
 
-  const fetchSubscriptionStatus = async () => {
+  const fetchSubscription = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
         setIsLoading(false);
         return;
       }
 
       const { data, error } = await supabase
-        .from('stripe_user_subscriptions')
-        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
+        .from("stripe_user_subscriptions")
+        .select(
+          "subscription_status, price_id, current_period_end, cancel_at_period_end"
+        )
         .maybeSingle();
+      console.log("Fetched subscription data:", data);
 
       if (error) {
-        console.error('Error fetching subscription:', error);
-        setError('Failed to load subscription status');
+        console.error("Error fetching subscription:", error);
       } else {
         setSubscription(data);
       }
-    } catch (error: any) {
-      console.error('Error:', error);
-      setError('Failed to load subscription status');
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getPlanName = (priceId: string | null) => {
-    if (!priceId) return 'Free Plan';
-    
-    const plan = planConfigs.find(p => p.priceId === priceId);
-    return plan?.name || 'Unknown Plan';
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'trialing':
-        return <Clock className="w-4 h-4 text-blue-500" />;
-      case 'past_due':
-      case 'unpaid':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'canceled':
-        return <AlertCircle className="w-4 h-4 text-gray-500" />;
-      default:
-        return <Crown className="w-4 h-4 text-gray-400" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'text-green-700 bg-green-50 border-green-200';
-      case 'trialing':
-        return 'text-blue-700 bg-blue-50 border-blue-200';
-      case 'past_due':
-      case 'unpaid':
-        return 'text-red-700 bg-red-50 border-red-200';
-      case 'canceled':
-        return 'text-gray-700 bg-gray-50 border-gray-200';
-      default:
-        return 'text-gray-700 bg-gray-50 border-gray-200';
-    }
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString();
-  };
-
   if (isLoading) {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-        <span className="text-sm text-gray-600">Loading subscription...</span>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="animate-pulse flex items-center">
+          <div className="w-5 h-5 bg-gray-300 rounded mr-3"></div>
+          <div className="h-4 bg-gray-300 rounded w-32"></div>
+        </div>
       </div>
     );
   }
 
-  if (error) {
+  if (!subscription || subscription.subscription_status === "not_started") {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <AlertCircle className="w-4 h-4 text-red-500" />
-        <span className="text-sm text-red-600">{error}</span>
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-center">
+          <AlertCircle className="w-5 h-5 text-yellow-600 mr-3" />
+          <div>
+            <p className="text-sm font-medium text-yellow-800">
+              No active subscription
+            </p>
+            <p className="text-xs text-yellow-600">
+              Choose a plan to get started
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!subscription || subscription.subscription_status === 'not_started') {
-    return (
-      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor('not_started')} ${className}`}>
-        <Crown className="w-4 h-4 mr-2" />
-        Free Plan
-      </div>
-    );
-  }
+  const product = subscription.price_id
+    ? getProductByPriceId(subscription.price_id)
+    : null;
+  const isActive = subscription.subscription_status === "active";
+  const isPastDue = subscription.subscription_status === "past_due";
+  const isCanceled = subscription.subscription_status === "canceled";
 
-  const planName = getPlanName(subscription.price_id);
-  const statusIcon = getStatusIcon(subscription.subscription_status);
-  const statusColor = getStatusColor(subscription.subscription_status);
+  const periodEndDate = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000).toLocaleDateString()
+    : null;
+
+  const getStatusIcon = () => {
+    if (isActive) return <CheckCircle className="w-5 h-5 text-green-600" />;
+    if (isPastDue) return <AlertCircle className="w-5 h-5 text-red-600" />;
+    if (isCanceled) return <Clock className="w-5 h-5 text-gray-600" />;
+    return <Crown className="w-5 h-5 text-blue-600" />;
+  };
+
+  const getStatusColor = () => {
+    if (isActive) return "bg-green-50 border-green-200";
+    if (isPastDue) return "bg-red-50 border-red-200";
+    if (isCanceled) return "bg-gray-50 border-gray-200";
+    return "bg-blue-50 border-blue-200";
+  };
+
+  const getStatusText = () => {
+    if (isActive && subscription.cancel_at_period_end) {
+      return "Active (Canceling)";
+    }
+    if (subscription.subscription_status) {
+      return (
+        subscription.subscription_status.charAt(0).toUpperCase() +
+        subscription.subscription_status.slice(1).replace("_", " ")
+      );
+    }
+    return "Unknown";
+  };
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${statusColor}`}>
-        {statusIcon}
-        <span className="ml-2">{planName}</span>
-      </div>
-      
-      {subscription.current_period_end && (
-        <div className="text-xs text-gray-600">
-          {subscription.cancel_at_period_end ? 'Expires' : 'Renews'} on{' '}
-          {formatDate(subscription.current_period_end)}
+    <div className={`rounded-lg p-4 ${getStatusColor()}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          {getStatusIcon()}
+          <div className="ml-3">
+            <p className="text-sm font-medium text-gray-900">
+              {product ? product.name : "FilePilot"}
+            </p>
+            <p className="text-xs text-gray-600">Status: {getStatusText()}</p>
+          </div>
         </div>
-      )}
+
+        {periodEndDate && (
+          <div className="text-right">
+            <p className="text-xs text-gray-600">
+              {subscription.cancel_at_period_end ? "Ends" : "Renews"}:{" "}
+              {periodEndDate}
+            </p>
+            {product && (
+              <p className="text-xs text-gray-500">
+                {product.price}/{product.interval}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

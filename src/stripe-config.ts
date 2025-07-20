@@ -1,78 +1,73 @@
-export interface PlanConfig {
+export interface StripeProduct {
   id: string;
+  priceId: string;
   name: string;
   description: string;
+  mode: 'payment' | 'subscription';
   price: string;
-  priceId: string;
   currency: string;
   interval?: 'month' | 'year';
-  mode: 'payment' | 'subscription';
   features: string[];
-  isRecommended?: boolean;
-  isFree?: boolean;
 }
 
-export const planConfigs: PlanConfig[] = [
+export const stripeProducts: StripeProduct[] = [
   {
     id: 'testprod',
-    name: 'Test Product',
-    description: 'Test product for development',
-    price: '€0.00',
     priceId: 'price_1RiK45LPohnizGblGB41isNm',
-    currency: 'eur',
+    name: 'Test Plan',
+    description: 'Test subscription for FilePilot - Full access to all features',
     mode: 'subscription',
+    price: '€0.00',
+    currency: 'eur',
+    interval: 'month',
     features: [
-      'Test features',
+      'Full access to all features',
+      'Email attachment monitoring',
       'Google Drive integration',
       'AI-powered categorization',
-      'Basic support'
-    ],
-    isFree: true
+      'Basic support',
+      'Unlimited email processing'
+    ]
   },
   {
     id: 'FilePilot-year',
-    name: 'FilePilot Annual',
-    description: 'Complete document organization solution - Annual plan',
-    price: '€34.99',
     priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
+    name: 'FilePilot Annual',
+    description: 'Annual subscription to FilePilot - Complete document organization solution',
+    mode: 'subscription',
+    price: '€34.99',
     currency: 'eur',
     interval: 'year',
-    mode: 'subscription',
     features: [
       'Unlimited email processing',
       'Advanced AI categorization',
       'Google Drive integration',
       'Smart search & filters',
       'Priority support',
+      'API access',
       'Custom folder structures',
       'Advanced analytics',
-      'Save with annual billing'
-    ],
-    isRecommended: true
+      'Best value - Save 40%'
+    ]
   }
 ];
 
 // Debug function to log current configuration
-export function debugPlanConfig() {
-  console.log('Current Plan Configuration:', {
-    plans: planConfigs.map(p => ({
+export function debugStripeConfig() {
+  console.log('Current Stripe Configuration:', {
+    products: stripeProducts.map(p => ({
       name: p.name,
-      price: p.price,
-      interval: p.interval,
       priceId: p.priceId,
-      mode: p.mode
+      price: p.price,
+      interval: p.interval
     }))
   });
 }
 
-export function getPlanById(id: string): PlanConfig | undefined {
-  return planConfigs.find(plan => plan.id === id);
+export function getProductByPriceId(priceId: string): StripeProduct | undefined {
+  return stripeProducts.find(product => product.priceId === priceId);
 }
 
-export function getRecommendedPlan(): PlanConfig | undefined {
-  return planConfigs.find(plan => plan.isRecommended);
-}
-
-export function getFreePlan(): PlanConfig | undefined {
-  return planConfigs.find(plan => plan.isFree);
+export function getProductById(id: string): StripeProduct | undefined {
+  return stripeProducts.find(product => product.id === id);
 }

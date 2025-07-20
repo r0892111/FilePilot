@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { AuthForm } from './AuthForm';
+import { OnboardingFlow } from './OnboardingFlow';
 import { FileText, ArrowLeft } from 'lucide-react';
 
 const supabase = createClient(
@@ -15,6 +16,7 @@ interface AuthPageProps {
 
 export function AuthPage({ mode, onAuthSuccess }: AuthPageProps) {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>(mode);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     setAuthMode(mode);
@@ -38,12 +40,31 @@ export function AuthPage({ mode, onAuthSuccess }: AuthPageProps) {
   };
 
   const handleAuthSuccess = () => {
-    // Redirect to homepage after successful authentication
-    window.location.href = '/';
+    // Only show onboarding for login, not signup
+    if (authMode === 'login') {
+      setShowOnboarding(true);
+    } else {
+      // For signup, redirect to homepage
+      window.location.href = '/';
+    }
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // After payment completion, redirect to success page
+    window.location.href = "/success";
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
+      {/* Onboarding Flow Modal */}
+      {showOnboarding && (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onClose={() => setShowOnboarding(false)}
+        />
+      )}
+
       {/* Header */}
       <div className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

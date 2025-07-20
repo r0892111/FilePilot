@@ -26,7 +26,8 @@ import {
   FolderOpen,
   HardDrive
 } from 'lucide-react';
-import { SubscriptionStatus } from './SubscriptionStatus';
+import { OnboardingStepsPage } from './OnboardingStepsPage';
+import { getProductByPriceId } from '../stripe-config';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -42,6 +43,13 @@ interface User {
     first_name?: string;
     last_name?: string;
   };
+}
+
+interface SubscriptionData {
+  subscription_status: string;
+  price_id: string | null;
+  current_period_end: number | null;
+  cancel_at_period_end: boolean;
 }
 
 interface DashboardStats {
@@ -61,23 +69,38 @@ interface RecentDocument {
   status: 'processed' | 'processing' | 'failed';
 }
 
+interface OnboardingStepsData {
+  payment_completed: boolean;
+  email_connected: boolean;
+  folder_selected: boolean;
+  onboarding_completed: boolean;
+}
+
 export function Dashboard() {
   const [user, setUser] = useState<User | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData>({
+    payment_completed: false,
+    email_connected: false,
+    folder_selected: false,
+    onboarding_completed: false
+  });
   const [stats, setStats] = useState<DashboardStats>({
     totalDocuments: 0,
-    storageLeft: '0 GB',
+    documentsThisMonth: 0,
     categoriesCreated: 0,
     storageUsed: '0 MB'
   });
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
 
   useEffect(() => {
-    checkUser();
+    checkUserAndSubscription();
   }, []);
 
-  const checkUser = async () => {
+  const checkUserAndSubscription = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -92,14 +115,59 @@ export function Dashboard() {
         user_metadata: session.user.user_metadata
       });
 
-      // For now, allow all authenticated users
-      setIsAuthorized(true);
-      loadDashboardData();
+      // Check subscription status
+      const { data: subscriptionData, error } = await supabase
+        .from('stripe_user_subscriptions')
+        .select('subscription_status, price_id, current_period_end, cancel_at_period_end')
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching subscription:', error);
+        setIsAuthorized(false);
+      } else if (subscriptionData && subscriptionData.subscription_status === 'active') {
+        setSubscription(subscriptionData);
+        setIsAuthorized(true);
+        await loadOnboardingSteps(session.user.id);
+        loadDashboardData();
+      } else {
+        setIsAuthorized(false);
+      }
     } catch (error) {
-      console.error('Error checking user:', error);
+      console.error('Error checking user and subscription:', error);
       setIsAuthorized(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadOnboardingSteps = async (userId: string) => {
+    try {
+      // First ensure onboarding is initialized
+      await supabase.rpc('initialize_user_onboarding_api', {
+        user_uuid: userId
+      });
+
+      const { data, error } = await supabase
+        .from('user_onboarding_steps')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading onboarding steps:', error);
+        return;
+      }
+
+      if (data) {
+        setOnboardingSteps({
+          payment_completed: data.payment_completed,
+          email_connected: data.email_connected,
+          folder_selected: data.folder_selected,
+          onboarding_completed: data.onboarding_completed
+        });
+      }
+    } catch (error) {
+      console.error('Error loading onboarding steps:', error);
     }
   };
 
@@ -210,6 +278,21 @@ export function Dashboard() {
     }
   };
 
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // Refresh onboarding steps
+    if (user) {
+      loadOnboardingSteps(user.id);
+    }
+  };
+
+  const setupComplete = onboardingSteps.onboarding_completed;
+  const completedSteps = [
+    onboardingSteps.payment_completed,
+    onboardingSteps.email_connected,
+    onboardingSteps.folder_selected
+  ].filter(Boolean).length;
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -231,11 +314,12 @@ export function Dashboard() {
             </div>
             
             <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Access Denied
+              Subscription Required
             </h1>
             
             <p className="text-gray-600 mb-6">
-              You don't have access to this dashboard. Please contact support if you believe this is an error.
+              This dashboard is only available to users with an active subscription. 
+              Please upgrade your account to access these features.
             </p>
             
             <div className="space-y-3">
@@ -261,6 +345,16 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Onboarding Flow */}
+      {showOnboarding && (
+        <OnboardingStepsPage
+          onComplete={handleOnboardingComplete}
+          onClose={() => setShowOnboarding(false)}
+          isSubscribed={true}
+          mode="manage"
+        />
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -269,6 +363,18 @@ export function Dashboard() {
             <div className="flex items-center">
               <FileText className="w-8 h-8 text-blue-600 mr-3" />
               <span className="text-xl font-bold text-gray-900">FilePilot</span>
+              {subscription && (
+                <div className="ml-4 px-3 py-1 bg-blue-100 rounded-full">
+                  <div className="flex items-center text-blue-800 text-sm font-medium">
+                    <Crown className="w-4 h-4 mr-1" />
+                    {(() => {
+                      const product = subscription.price_id ? getProductByPriceId(subscription.price_id) : null;
+                      return product?.interval === 'year' ? 'Annual' : 
+                             product?.name === 'Test Plan' ? 'Free' : 'Active';
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* User Menu */}
@@ -278,10 +384,8 @@ export function Dashboard() {
                 Welcome, {user ? getUserDisplayName(user) : 'User'}
               </div>
               
-              <SubscriptionStatus />
-              
               <button 
-                onClick={() => alert('Settings coming soon!')}
+                onClick={() => setShowOnboarding(true)}
                 className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <Settings className="w-5 h-5" />
@@ -289,7 +393,7 @@ export function Dashboard() {
               
               <button
                 onClick={handleSignOut}
-                className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <LogOut className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Sign out</span>
@@ -307,9 +411,45 @@ export function Dashboard() {
             Welcome back, {user ? getUserDisplayName(user) : 'User'}!
           </h1>
           <p className="text-gray-600">
-            Here's what's happening with your document organization today.
+            {setupComplete 
+              ? "Here's what's happening with your document organization today."
+              : `Setup progress: ${completedSteps}/3 steps completed. Click the settings icon to continue.`
+            }
           </p>
         </div>
+
+        {/* Setup Progress (if not complete) */}
+        {!setupComplete && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 mb-8 border border-blue-200">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Complete Your Setup</h2>
+                <p className="text-gray-600">Finish configuring your account to start organizing email attachments</p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-blue-600">
+                  {completedSteps}/3
+                </div>
+                <div className="text-sm text-gray-500">Steps completed</div>
+              </div>
+            </div>
+            
+            <div className="w-full bg-white/50 rounded-full h-3 mb-6">
+              <div 
+                className="bg-gradient-to-r from-blue-400 to-green-400 h-3 rounded-full transition-all duration-500"
+                style={{ width: `${(completedSteps / 3) * 100}%` }}
+              ></div>
+            </div>
+
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center"
+            >
+              Continue Setup
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -370,13 +510,16 @@ export function Dashboard() {
               <Settings className="w-6 h-6" />
             </div>
             <p className="text-purple-100 mb-4">
-              Manage your email accounts and organization settings.
+              {setupComplete 
+                ? "Manage your email accounts and organization settings."
+                : "Complete your setup to start organizing email attachments."
+              }
             </p>
             <button 
-              onClick={() => alert('Settings coming soon!')}
+              onClick={() => setShowOnboarding(true)}
               className="bg-white text-purple-600 px-4 py-2 rounded-lg font-medium hover:bg-purple-50 transition-colors"
             >
-              Settings
+              {setupComplete ? 'Manage Settings' : 'Complete Setup'}
             </button>
           </div>
 
@@ -386,11 +529,14 @@ export function Dashboard() {
               <Zap className="w-6 h-6" />
             </div>
             <p className="text-green-100 mb-4">
-              Your AI assistant is actively organizing email attachments.
+              {setupComplete 
+                ? "Your AI assistant is actively organizing email attachments."
+                : "Set up your accounts to enable AI document processing."
+              }
             </p>
             <div className="flex items-center text-green-200">
-              <div className="w-2 h-2 rounded-full mr-2 bg-green-300 animate-pulse"></div>
-              <span className="text-sm font-medium">Active</span>
+              <div className={`w-2 h-2 rounded-full mr-2 ${setupComplete ? 'bg-green-300 animate-pulse' : 'bg-green-400'}`}></div>
+              <span className="text-sm font-medium">{setupComplete ? 'Active' : 'Waiting for setup'}</span>
             </div>
           </div>
         </div>

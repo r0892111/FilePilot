@@ -27,7 +27,6 @@ import {
   LogOut
 } from 'lucide-react';
 import { EmailSetupPage } from './EmailSetupPage';
-import { FolderSetupPage } from './FolderSetupPage';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,

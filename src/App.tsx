@@ -18,11 +18,8 @@ import {
   LayoutDashboard,
   Settings,
 } from "lucide-react";
-import { stripeProducts } from "./stripe-config";
-import { debugStripeConfig } from "./stripe-config";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
 import { IntegrationSlider } from "./components/IntegrationSlider";
-import { OnboardingFlow } from "./components/OnboardingFlow";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -62,11 +59,9 @@ function App() {
   );
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
-    debugStripeConfig(); // Debug: Log current Stripe configuration
     checkUser();
 
     // Listen for auth state changes
@@ -205,8 +200,8 @@ function App() {
         window.location.href = "/steps";
       }
     } else {
-      // User needs to subscribe, show onboarding flow
-      setShowOnboarding(true);
+      // User needs to subscribe, redirect to pricing
+      scrollToPricing();
     }
   };
 
@@ -243,18 +238,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Onboarding Flow */}
-      {showOnboarding && (
-        <OnboardingFlow
-          onComplete={() => {
-            setShowOnboarding(false);
-            // After payment completion, redirect to success page
-            window.location.href = "/success";
-          }}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 min-w-0">
         <div
@@ -546,66 +529,105 @@ function App() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
-            {stripeProducts.map((product, index) => (
-              <div
-                key={product.id}
-                className={`rounded-2xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${
-                  product.name === 'FilePilot Annual' || product.interval === 'year'
-                    ? 'border-blue-500 bg-blue-50 shadow-lg scale-105 relative'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {(product.name === 'FilePilot Annual' || product.interval === 'year') && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                      <Star className="w-4 h-4 inline mr-1" />
-                      {product.name === 'Test Plan' ? 'Free Trial' : 'Recommended'}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">{product.name}</h3>
-                  <div className="text-4xl font-bold text-gray-900 mb-2">{product.price}</div>
-                  <div className="text-gray-500 mb-4">
-                    {product.interval ? `per ${product.interval}` : 'one-time'}
-                    {product.name === 'Test Plan' && <span className="block text-green-600 font-medium">Free to start!</span>}
-                  </div>
-                  
-                  {product.interval === 'year' && (
-                    <div className="text-sm text-green-600 font-medium mb-4">
-                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Best value for power users!'}
-                    </div>
-                  )}
-                </div>
-                
-                <ul className="space-y-4 mb-8">
-                  {product.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center">
-                      <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-600">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <button
-                  onClick={() => {
-                    if (!user) {
-                      window.location.href = "/signup";
-                    } else {
-                      setShowOnboarding(true);
-                    }
-                  }}
-                  className={`w-full py-4 px-6 rounded-lg font-semibold transition-colors ${
-                    product.interval === 'year'
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-gray-900 hover:bg-gray-800 text-white'
-                  }`}
-                >
-                  {user ? (product.name === 'Test Plan' ? 'Start Free Trial' : 'Get Started') : 'Sign Up & Get Started'}
-                </button>
+            {/* Starter Plan */}
+            <div className="rounded-2xl p-6 sm:p-8 border-2 border-gray-200 hover:border-gray-300 transition-all duration-300 hover:shadow-xl">
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Starter Plan</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">€9.99</div>
+                <div className="text-gray-500 mb-4">per month</div>
               </div>
-            ))}
+              
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Up to 1,000 emails per month</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Basic AI categorization</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Google Drive integration</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Email support</span>
+                </li>
+              </ul>
+              
+              <button
+                onClick={() => {
+                  if (!user) {
+                    window.location.href = "/signup";
+                  } else {
+                    alert("Payment integration coming soon!");
+                  }
+                }}
+                className="w-full py-4 px-6 rounded-lg font-semibold transition-colors bg-gray-900 hover:bg-gray-800 text-white"
+              >
+                {user ? 'Get Started' : 'Sign Up & Get Started'}
+              </button>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="rounded-2xl p-6 sm:p-8 border-2 border-blue-500 bg-blue-50 shadow-lg scale-105 relative transition-all duration-300 hover:shadow-xl">
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                  <Star className="w-4 h-4 inline mr-1" />
+                  Recommended
+                </div>
+              </div>
+              
+              <div className="text-center mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-4">Pro Plan</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-2">€29.99</div>
+                <div className="text-gray-500 mb-4">per month</div>
+                <div className="text-sm text-green-600 font-medium mb-4">
+                  Most popular choice!
+                </div>
+              </div>
+              
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Unlimited email processing</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Advanced AI categorization</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Google Drive integration</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Priority support</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Custom folder structures</span>
+                </li>
+                <li className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-600">Advanced analytics</span>
+                </li>
+              </ul>
+              
+              <button
+                onClick={() => {
+                  if (!user) {
+                    window.location.href = "/signup";
+                  } else {
+                    alert("Payment integration coming soon!");
+                  }
+                }}
+                className="w-full py-4 px-6 rounded-lg font-semibold transition-colors bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {user ? 'Get Started' : 'Sign Up & Get Started'}
+              </button>
+            </div>
           </div>
         </div>
       </section>

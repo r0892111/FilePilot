@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Crown, Clock, AlertCircle, CheckCircle } from "lucide-react";
+import { stripeProducts } from "../stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -53,6 +54,12 @@ export function SubscriptionStatus() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getProductName = (priceId: string | null) => {
+    if (!priceId) return "Unknown Plan";
+    const product = stripeProducts.find(p => p.priceId === priceId);
+    return product ? product.name : "Unknown Plan";
   };
 
   if (isLoading) {
@@ -126,7 +133,7 @@ export function SubscriptionStatus() {
           {getStatusIcon()}
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">
-              FilePilot Subscription
+              {getProductName(subscription.price_id)}
             </p>
             <p className="text-xs text-gray-600">Status: {getStatusText()}</p>
           </div>

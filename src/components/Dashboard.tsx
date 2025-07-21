@@ -27,7 +27,6 @@ import {
   HardDrive
 } from 'lucide-react';
 import { OnboardingStepsPage } from './OnboardingStepsPage';
-import { getProductByPriceId } from '../stripe-config';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -367,11 +366,7 @@ export function Dashboard() {
                 <div className="ml-4 px-3 py-1 bg-blue-100 rounded-full">
                   <div className="flex items-center text-blue-800 text-sm font-medium">
                     <Crown className="w-4 h-4 mr-1" />
-                    {(() => {
-                      const product = subscription.price_id ? getProductByPriceId(subscription.price_id) : null;
-                      return product?.interval === 'year' ? 'Annual' : 
-                             product?.name === 'Test Plan' ? 'Free' : 'Active';
-                    })()}
+                    Active
                   </div>
                 </div>
               )}

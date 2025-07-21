@@ -18,11 +18,9 @@ import {
   LayoutDashboard,
   Settings,
 } from "lucide-react";
-import { stripeProducts } from "./stripe-config";
-import { debugStripeConfig } from "./stripe-config";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
 import { IntegrationSlider } from "./components/IntegrationSlider";
-import { OnboardingFlow } from "./components/OnboardingFlow";
+import { stripeProducts } from "./stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -62,11 +60,9 @@ function App() {
   );
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
-    debugStripeConfig(); // Debug: Log current Stripe configuration
     checkUser();
 
     // Listen for auth state changes
@@ -205,8 +201,51 @@ function App() {
         window.location.href = "/steps";
       }
     } else {
-      // User needs to subscribe, show onboarding flow
-      setShowOnboarding(true);
+      // User needs to subscribe, redirect to pricing
+      scrollToPricing();
+    }
+  };
+
+  const handlePlanSelection = async (priceId: string) => {
+    if (!user) {
+      window.location.href = "/signup";
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const requestBody = {
+        price_id: priceId,
+        success_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/success`,
+        cancel_url: `${import.meta.env.VITE_SITE_URL || window.location.origin}/`,
+        mode: 'subscription'
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('Checkout error:', data);
+        alert(`Failed to create checkout session: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      alert(`An error occurred: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -243,18 +282,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Onboarding Flow */}
-      {showOnboarding && (
-        <OnboardingFlow
-          onComplete={() => {
-            setShowOnboarding(false);
-            // After payment completion, redirect to success page
-            window.location.href = "/success";
-          }}
-          onClose={() => setShowOnboarding(false)}
-        />
-      )}
-
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 min-w-0">
         <div
@@ -547,19 +574,19 @@ function App() {
 
           <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
             {stripeProducts.map((product, index) => (
-              <div
+              <div 
                 key={product.id}
                 className={`rounded-2xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${
-                  product.name === 'FilePilot Annual' || product.interval === 'year'
-                    ? 'border-blue-500 bg-blue-50 shadow-lg scale-105 relative'
+                  product.interval === 'year' 
+                    ? 'border-blue-500 bg-blue-50 shadow-lg scale-105 relative' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                {(product.name === 'FilePilot Annual' || product.interval === 'year') && (
+                {product.interval === 'year' && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
                       <Star className="w-4 h-4 inline mr-1" />
-                      {product.name === 'Test Plan' ? 'Free Trial' : 'Recommended'}
+                      Recommended
                     </div>
                   </div>
                 )}
@@ -574,7 +601,7 @@ function App() {
                   
                   {product.interval === 'year' && (
                     <div className="text-sm text-green-600 font-medium mb-4">
-                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Best value for power users!'}
+                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Complete solution!'}
                     </div>
                   )}
                 </div>
@@ -589,20 +616,14 @@ function App() {
                 </ul>
                 
                 <button
-                  onClick={() => {
-                    if (!user) {
-                      window.location.href = "/signup";
-                    } else {
-                      setShowOnboarding(true);
-                    }
-                  }}
+                  onClick={() => handlePlanSelection(product.priceId)}
                   className={`w-full py-4 px-6 rounded-lg font-semibold transition-colors ${
                     product.interval === 'year'
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-900 hover:bg-gray-800 text-white'
                   }`}
                 >
-                  {user ? (product.name === 'Test Plan' ? 'Start Free Trial' : 'Get Started') : 'Sign Up & Get Started'}
+                  {user ? 'Get Started' : 'Sign Up & Get Started'}
                 </button>
               </div>
             ))}

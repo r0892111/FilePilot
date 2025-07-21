@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Crown, Clock, AlertCircle, CheckCircle } from "lucide-react";
-import { getProductByPriceId } from "../stripe-config";
+import { stripeProducts } from "../stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -56,6 +56,12 @@ export function SubscriptionStatus() {
     }
   };
 
+  const getProductName = (priceId: string | null) => {
+    if (!priceId) return "Unknown Plan";
+    const product = stripeProducts.find(p => p.priceId === priceId);
+    return product ? product.name : "Unknown Plan";
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -85,9 +91,6 @@ export function SubscriptionStatus() {
     );
   }
 
-  const product = subscription.price_id
-    ? getProductByPriceId(subscription.price_id)
-    : null;
   const isActive = subscription.subscription_status === "active";
   const isPastDue = subscription.subscription_status === "past_due";
   const isCanceled = subscription.subscription_status === "canceled";
@@ -130,7 +133,7 @@ export function SubscriptionStatus() {
           {getStatusIcon()}
           <div className="ml-3">
             <p className="text-sm font-medium text-gray-900">
-              {product ? product.name : "FilePilot"}
+              {getProductName(subscription.price_id)}
             </p>
             <p className="text-xs text-gray-600">Status: {getStatusText()}</p>
           </div>
@@ -142,11 +145,6 @@ export function SubscriptionStatus() {
               {subscription.cancel_at_period_end ? "Ends" : "Renews"}:{" "}
               {periodEndDate}
             </p>
-            {product && (
-              <p className="text-xs text-gray-500">
-                {product.price}/{product.interval}
-              </p>
-            )}
           </div>
         )}
       </div>

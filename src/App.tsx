@@ -586,7 +586,7 @@ function App() {
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
                       <Star className="w-4 h-4 inline mr-1" />
-                      Recommended
+                      Best Value - Save 27%
                     </div>
                   </div>
                 )}
@@ -596,14 +596,11 @@ function App() {
                   <div className="text-4xl font-bold text-gray-900 mb-2">{product.price}</div>
                   <div className="text-gray-500 mb-4">
                     {product.interval ? `per ${product.interval}` : 'one-time'}
-                    {product.name === 'Test Plan' && <span className="block text-green-600 font-medium">Free to start!</span>}
                   </div>
                   
-                  {product.interval === 'year' && (
-                    <div className="text-sm text-green-600 font-medium mb-4">
-                      {product.name === 'Test Plan' ? 'Perfect for testing!' : 'Complete solution!'}
-                    </div>
-                  )}
+                  <div className="text-sm text-gray-600 font-medium mb-4">
+                    {product.description}
+                  </div>
                 </div>
                 
                 <ul className="space-y-4 mb-8">

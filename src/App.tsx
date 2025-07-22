@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
 import { IntegrationSlider } from "./components/IntegrationSlider";
-import { stripeProducts } from "./stripe-config";
+import { fetchStripeProducts, StripeProduct } from "./stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -60,10 +60,13 @@ function App() {
   );
   const [onboardingSteps, setOnboardingSteps] = useState<OnboardingStepsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
   useEffect(() => {
     setIsVisible(true);
     checkUser();
+    loadStripeProducts();
 
     // Listen for auth state changes
     const {
@@ -87,6 +90,17 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const loadStripeProducts = async () => {
+    try {
+      const products = await fetchStripeProducts();
+      setStripeProducts(products);
+    } catch (error) {
+      console.error('Error loading Stripe products:', error);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
 
   const initializeUserOnboarding = async (userId: string) => {
     try {
@@ -573,7 +587,17 @@ function App() {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
-            {stripeProducts.map((product, index) => (
+            {isLoadingProducts ? (
+              <div className="col-span-2 text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading pricing plans...</p>
+              </div>
+            ) : stripeProducts.length === 0 ? (
+              <div className="col-span-2 text-center py-12">
+                <p className="text-gray-600">No pricing plans available at the moment.</p>
+              </div>
+            ) : (
+              stripeProducts.map((product, index) => (
               <div 
                 key={product.id}
                 className={`rounded-2xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${
@@ -623,7 +647,8 @@ function App() {
                   {user ? 'Get Started' : 'Sign Up & Get Started'}
                 </button>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>

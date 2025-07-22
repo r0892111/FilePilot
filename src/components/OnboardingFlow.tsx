@@ -10,7 +10,7 @@ import {
   Crown,
   X
 } from 'lucide-react';
-import { stripeProducts } from '../stripe-config';
+import { fetchStripeProducts, StripeProduct } from '../stripe-config';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -24,14 +24,31 @@ interface OnboardingFlowProps {
 
 export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>(
     stripeProducts.find(p => p.interval === 'year')?.priceId || stripeProducts[0].priceId
   ); // Default to annual plan for best value
 
   useEffect(() => {
     checkUser();
+    loadStripeProducts();
   }, []);
+
+  const loadStripeProducts = async () => {
+    try {
+      const products = await fetchStripeProducts();
+      setStripeProducts(products);
+      // Set default to annual plan if available, otherwise first product
+      const annualPlan = products.find(p => p.interval === 'year');
+      setSelectedPlan(annualPlan?.priceId || products[0]?.priceId || '');
+    } catch (error) {
+      console.error('Error loading Stripe products:', error);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
 
   const checkUser = async () => {
     try {
@@ -130,7 +147,17 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
           </div>
           
           <div className="space-y-6 sm:grid sm:grid-cols-2 sm:gap-6 sm:space-y-0 max-w-2xl mx-auto mb-8">
-            {stripeProducts.map((product) => (
+            {isLoadingProducts ? (
+              <div className="col-span-2 text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading pricing plans...</p>
+              </div>
+            ) : stripeProducts.length === 0 ? (
+              <div className="col-span-2 text-center py-12">
+                <p className="text-gray-600">No pricing plans available.</p>
+              </div>
+            ) : (
+              stripeProducts.map((product) => (
               <div
                 key={product.id}
                 className={`rounded-2xl p-3 sm:p-6 border-2 cursor-pointer transition-all duration-300 touch-manipulation ${
@@ -170,7 +197,8 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                   ))}
                 </ul>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

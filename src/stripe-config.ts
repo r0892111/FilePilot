@@ -56,12 +56,12 @@ const getFallbackProducts = (): StripeProduct[] => {
   return [
     {
       id: 'filepilot-monthly',
-      priceId: 'price_1RnI5VLPohnizGbliLa6FAbe',
+      priceId: 'price_1RiK45LPohnizGblGB41isNm',
       name: 'FilePilot Monthly',
-      price: '€4.00',
+      price: '€0.00',
       interval: 'month',
       mode: 'subscription',
-      description: 'Perfect for getting started with automated document organization',
+      description: 'Test plan for getting started with automated document organization',
       features: [
         'Unlimited email processing',
         'AI-powered categorization',
@@ -73,7 +73,7 @@ const getFallbackProducts = (): StripeProduct[] => {
     },
     {
       id: 'filepilot-annual',
-      priceId: 'price_1RnI4jLPohnizGblTUXhsAK3',
+      priceId: 'price_1RiEPsLPohnizGbllcm2UZCw',
       name: 'FilePilot Annual',
       price: '€34.99',
       interval: 'year',

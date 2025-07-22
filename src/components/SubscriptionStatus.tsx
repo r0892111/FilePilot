@@ -61,11 +61,11 @@ export function SubscriptionStatus() {
     
     // Map price IDs to product names
     const priceToNameMap: { [key: string]: string } = {
-      'price_1RnI5VLPohnizGbliLa6FAbe': 'FilePilot Monthly',
-      'price_1RnI4jLPohnizGblTUXhsAK3': 'FilePilot Annual'
+      'price_1RnI5VLPohnizGbliLa6FAbe': 'Filepilot Month',
+      'price_1RnI4jLPohnizGblTUXhsAK3': 'Filepilot Year'
     };
     
-    return priceToNameMap[priceId] || "FilePilot Plan";
+    return priceToNameMap[priceId] || "Filepilot Plan";
   };
 
   if (isLoading) {

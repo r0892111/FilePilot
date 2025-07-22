@@ -14,7 +14,7 @@ export const stripeProducts: StripeProduct[] = [
   {
     id: 'prod_SijYQtin4uF1B2',
     priceId: 'price_1RnI5VLPohnizGbliLa6FAbe',
-    name: 'FilePilot Monthly',
+    name: 'Filepilot Month',
     price: '€4.00',
     interval: 'month',
     mode: 'subscription',
@@ -31,7 +31,7 @@ export const stripeProducts: StripeProduct[] = [
   {
     id: 'prod_SijXdzmu0toRPV',
     priceId: 'price_1RnI4jLPohnizGblTUXhsAK3',
-    name: 'FilePilot Annual',
+    name: 'Filepilot Year',
     price: '€34.99',
     interval: 'year',
     mode: 'subscription',

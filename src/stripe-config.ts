@@ -24,6 +24,7 @@ export const fetchStripeProducts = async (): Promise<StripeProduct[]> => {
     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-products`, {
       method: 'GET',
       headers: {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
     });

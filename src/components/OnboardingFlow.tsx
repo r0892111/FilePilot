@@ -10,7 +10,7 @@ import {
   Crown,
   X
 } from 'lucide-react';
-import { fetchStripeProducts, StripeProduct } from '../stripe-config';
+import { fetchStripeProducts, StripeProduct, stripeProducts } from '../stripe-config';
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -28,7 +28,7 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
   const [user, setUser] = useState<any>(null);
   const [stripeProducts, setStripeProducts] = useState<StripeProduct[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<string>(
-    stripeProducts.find(p => p.interval === 'year')?.priceId || stripeProducts[0].priceId
+    stripeProducts.find(p => p.interval === 'year')?.priceId || stripeProducts[0]?.priceId || ''
   ); // Default to annual plan for best value
 
   useEffect(() => {
@@ -45,6 +45,10 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
       setSelectedPlan(annualPlan?.priceId || products[0]?.priceId || '');
     } catch (error) {
       console.error('Error loading Stripe products:', error);
+      // Fallback to static products
+      setStripeProducts(stripeProducts);
+      const annualPlan = stripeProducts.find(p => p.interval === 'year');
+      setSelectedPlan(annualPlan?.priceId || stripeProducts[0]?.priceId || '');
     } finally {
       setIsLoadingProducts(false);
     }

@@ -58,8 +58,14 @@ export function SubscriptionStatus() {
 
   const getProductName = (priceId: string | null) => {
     if (!priceId) return "Unknown Plan";
-    const product = stripeProducts.find(p => p.priceId === priceId);
-    return product ? product.name : "Unknown Plan";
+    
+    // Map price IDs to product names
+    const priceToNameMap: { [key: string]: string } = {
+      'price_1RnI5VLPohnizGbliLa6FAbe': 'FilePilot Monthly',
+      'price_1RnI4jLPohnizGblTUXhsAK3': 'FilePilot Annual'
+    };
+    
+    return priceToNameMap[priceId] || "FilePilot Plan";
   };
 
   if (isLoading) {

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { SubscriptionStatus } from "./components/SubscriptionStatus";
 import { IntegrationSlider } from "./components/IntegrationSlider";
-import { fetchStripeProducts, StripeProduct } from "./stripe-config";
+import { fetchStripeProducts, StripeProduct, stripeProducts } from "./stripe-config";
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,

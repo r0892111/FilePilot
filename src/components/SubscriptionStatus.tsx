@@ -61,7 +61,7 @@ export function SubscriptionStatus() {
     
     // Map price IDs to product names
     const priceToNameMap: { [key: string]: string } = {
-      'price_1RnI5VLPohnizGbliLa6FAbe': 'Filepilot Month',
+      'price_1RnzlbLPohnizGblMopmOjP0': 'testsubscription',
       'price_1RnI4jLPohnizGblTUXhsAK3': 'Filepilot Year'
     };
     

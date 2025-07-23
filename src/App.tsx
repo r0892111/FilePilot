@@ -610,7 +610,7 @@ function App() {
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                     <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-2 rounded-full text-sm font-semibold">
                       <Star className="w-4 h-4 inline mr-1" />
-                      Best Value - Save 27%
+                      Best Value
                     </div>
                   </div>
                 )}

@@ -12,20 +12,20 @@ export interface StripeProduct {
 // Static product configuration based on your Stripe products
 export const stripeProducts: StripeProduct[] = [
   {
-    id: 'prod_SijYQtin4uF1B2',
-    priceId: 'price_1RnI5VLPohnizGbliLa6FAbe',
-    name: 'Filepilot Month',
-    price: '€4.00',
+    id: 'prod_SjSgllnIS1gkRs',
+    priceId: 'price_1RnzlbLPohnizGblMopmOjP0',
+    name: 'testsubscription',
+    price: '€0.00',
     interval: 'month',
     mode: 'subscription',
-    description: 'Perfect for getting started with automated document organization',
+    description: 'test',
     features: [
       'Unlimited email processing',
       'AI-powered categorization',
       'Google Drive integration',
       'Email support',
       'Basic analytics',
-      'Monthly billing'
+      'Test subscription features'
     ]
   },
   {
@@ -35,7 +35,7 @@ export const stripeProducts: StripeProduct[] = [
     price: '€34.99',
     interval: 'year',
     mode: 'subscription',
-    description: 'Best value plan with all features and priority support',
+    description: 'Annual subscription with full features and priority support',
     features: [
       'Unlimited email processing',
       'Advanced AI categorization',
@@ -43,7 +43,7 @@ export const stripeProducts: StripeProduct[] = [
       'Priority support',
       'Custom folder structures',
       'Advanced analytics',
-      'Annual billing (save 27%)'
+      'Annual billing (save money)'
     ]
   }
 ];

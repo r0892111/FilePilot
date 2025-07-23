@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
 
 function getProductFeatures(productId: string, interval?: string): string[] {
   // Define features based on product ID
-  if (productId === 'prod_SijXdzmu0toRPV' || interval === 'year') {
+  if (productId === 'prod_SijXdzmu0toRPV') {
     return [
       'Unlimited email processing',
       'Advanced AI categorization',
@@ -135,16 +135,16 @@ function getProductFeatures(productId: string, interval?: string): string[] {
       'Priority support',
       'Custom folder structures',
       'Advanced analytics',
-      'Annual billing (save 27%)'
+      'Annual billing (save money)'
     ];
-  } else if (productId === 'prod_SijYQtin4uF1B2' || interval === 'month') {
+  } else if (productId === 'prod_SjSgllnIS1gkRs') {
     return [
       'Unlimited email processing',
       'AI-powered categorization',
       'Google Drive integration',
       'Email support',
       'Basic analytics',
-      'Monthly billing'
+      'Test subscription features'
     ];
   }
 
@@ -158,10 +158,10 @@ function getProductFeatures(productId: string, interval?: string): string[] {
 }
 
 function getDefaultDescription(productId: string, interval?: string): string {
-  if (productId === 'prod_SijXdzmu0toRPV' || interval === 'year') {
-    return 'Best value plan with all features and priority support';
-  } else if (productId === 'prod_SijYQtin4uF1B2' || interval === 'month') {
-    return 'Perfect for getting started with automated document organization';
+  if (productId === 'prod_SijXdzmu0toRPV') {
+    return 'Annual subscription with full features and priority support';
+  } else if (productId === 'prod_SjSgllnIS1gkRs') {
+    return 'test';
   }
   
   return 'Automated document organization with AI-powered categorization';

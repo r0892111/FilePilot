@@ -174,7 +174,7 @@ export function OnboardingFlow({ onComplete, onClose }: OnboardingFlowProps) {
                 {product.interval === 'year' && (
                   <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-3 py-1 rounded-full text-sm font-semibold mb-4 inline-block">
                     <Crown className="w-3 h-3 inline mr-1 flex-shrink-0" />
-                    Best Value - Save 27%
+                    Best Value
                   </div>
                 )}
                 
